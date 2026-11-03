@@ -2,7 +2,7 @@
 (function contentModule() {
   'use strict';
 
-  const BUILD_VERSION = chrome.runtime?.getManifest?.()?.version || '1.0.1';
+  const BUILD_VERSION = chrome.runtime?.getManifest?.()?.version || '1.0.0';
   const VA_STORAGE_KEY = 'selectedVaName';
   const LAST_COMPANY_KEY = 'lastQuickReplyCompany';
   let selectedVaName = '';
