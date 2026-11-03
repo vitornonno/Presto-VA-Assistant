@@ -80,15 +80,15 @@
   function normalizeService(value) {
     if (!value) return null;
     const text = String(value).toLowerCase().replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim();
-      if (/move[ -]?in\s*(?:or|\/)\s*move[ -]?out/.test(text)) return 'move_in_out';
+    if (/move[ -]?in\s*(?:or|\/|ou)\s*move[ -]?out|limpeza de mudan[çc]a/.test(text)) return 'move_in_out';
     const aliases = [
-      ['post_construction', /post[ -]?construction|construction clean/],
+      ['post_construction', /post[ -]?construction|construction clean|p[óo]s[ -]?obra/],
       ['move_in', /move[ -]?in/],
       ['move_out', /move[ -]?out/],
-      ['deep_cleaning', /deep clean/],
-      ['first_cleaning', /first clean|initial clean/],
-      ['biweekly', /bi[ -]?weekly|every two weeks/],
-      ['monthly', /monthly|once a month/]
+      ['deep_cleaning', /deep clean|limpeza profunda|faxina pesada/],
+      ['first_cleaning', /first clean|initial clean|primeira limpeza/],
+      ['biweekly', /bi[ -]?weekly|every two weeks|quinzenal/],
+      ['monthly', /monthly|once a month|mensal/]
     ];
     const matched = aliases.find(([, pattern]) => pattern.test(text));
     return matched ? matched[0] : null;
@@ -98,7 +98,7 @@
     const directMatch = normalizeService(value);
     if (directMatch) return directMatch;
     const serviceText = String(value || '').toLowerCase();
-    if (!/regular|standard|home cleaning/.test(serviceText)) return null;
+    if (!/regular|standard|home cleaning|house cleaning|limpeza residencial|limpeza regular|limpeza padr[ãa]o/.test(serviceText)) return null;
     // New leads always begin with a First Cleaning; recurring rates apply later.
     return 'first_cleaning';
   }
@@ -106,14 +106,14 @@
   function recurringCleaningFrequency(serviceType, frequency) {
     const serviceText = String(serviceType || '').toLowerCase();
     const frequencyText = String(frequency || '').toLowerCase();
-    if (!/regular|standard|home cleaning/.test(serviceText) || /just once|one[- ]?time|single/.test(frequencyText)) return null;
-    if (/bi[ -]?weekly|every\s*(?:2|two)\s*weeks?|fortnightly/.test(frequencyText)) {
+    if (!/regular|standard|home cleaning|house cleaning|limpeza residencial|limpeza regular|limpeza padr[ãa]o/.test(serviceText) || /just once|one[- ]?time|single|uma vez|apenas uma vez|somente uma vez/.test(frequencyText)) return null;
+    if (/bi[ -]?weekly|every\s*(?:2|two)\s*weeks?|fortnightly|quinzenal(?:mente)?|a cada\s*(?:2|duas)\s*semanas/.test(frequencyText)) {
       return { id: 'biweekly', label: 'Bi-weekly' };
     }
-    if (/monthly|(?:once|every)\s+(?:a\s+)?month|every\s*(?:4|four)\s*weeks?/.test(frequencyText)) {
+    if (/monthly|(?:once|every)\s+(?:a\s+)?month|every\s*(?:4|four)\s*weeks?|mensal(?:mente)?|uma vez por m[êe]s/.test(frequencyText)) {
       return { id: 'monthly', label: 'Monthly' };
     }
-    if (/weekly|(?:once|every)\s+(?:a\s+)?week/.test(frequencyText)) {
+    if (/weekly|(?:once|every)\s+(?:a\s+)?week|semanal(?:mente)?|toda semana|uma vez por semana/.test(frequencyText)) {
       return { id: 'weekly', label: 'Weekly' };
     }
     return { id: null, label: 'Recurring' };
@@ -198,7 +198,7 @@
 
   function resolveCompany(companyName, override) {
     if (Object.hasOwn(COMPANIES, override)) return override;
-    if (/\bkacs\b|kacs cleaning services/i.test(companyName || '')) return 'kacs';
+    if (/\bkacs\b|kacs cleaning services|\bjuliana\s+(?:dos\s+santos\s+)?paix[aã]o\b/i.test(companyName || '')) return 'kacs';
     if (/jhey['’]?s cleaning/i.test(companyName || '')) return 'jheys';
     if (/da\s*silva\s+cleaning/i.test(companyName || '')) return 'dasilva';
     if (/\but\s*cleans?\b/i.test(companyName || '')) return 'utcleans';
@@ -260,6 +260,7 @@
         baseHours,
         toleranceHours: 1.5,
         estimatedHours: { minimum: baseHours, maximum: baseHours + 1.5 },
+        includeEstimatedTime: true,
         recurringCleaning,
         pricingDisclosure: 'hourly_recommended',
         status: 'ready_for_review'
@@ -268,6 +269,8 @@
 
     if (size.status === 'over_limit') return { ...base, status: 'manual_quote_required', reason: 'Homes above 3,000 sq. ft. require a human quote.' };
       const baseAmount = BEGINNER_PRICES[size.band][SERVICE_INDEX.indexOf(service)];
+      const rawBaseHours = KACS_HOURS[size.band][SERVICE_INDEX.indexOf(service)];
+      const baseHours = roundToNearestHalfHour(rawBaseHours);
       const discountApplies = configuredDiscount !== null && configuredDiscount > 0 && effectiveDiscountTarget === service && !firstRecurringDiscountPercent;
       const standardPriceRange = { minimum: baseAmount, maximum: baseAmount + 100 };
       const priceRange = discountApplies ? discountedRange(standardPriceRange, configuredDiscount) : standardPriceRange;
@@ -279,6 +282,9 @@
       ...base,
       quoteType: 'fixed_price',
         amount,
+      baseHours,
+      estimatedHours: { minimum: baseHours, maximum: baseHours + 1.5 },
+      includeEstimatedTime: Boolean(options.includeEstimatedTime),
       discount: discountApplies ? { percentage: configuredDiscount, amount: baseAmount - amount } : null,
       priceRange,
       currency: 'USD',

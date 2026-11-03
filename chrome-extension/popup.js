@@ -1,4 +1,4 @@
-/* global chrome, CleaningXlsxImporter, CleaningCleanerAvailability */
+/* global chrome, CleaningXlsxImporter, CleaningCleanerAvailability, CleaningQuoteMessages */
 'use strict';
 
 const reviewsElement = document.querySelector('#reviews');
@@ -8,8 +8,20 @@ const relayTokenElement = document.querySelector('#relay-token');
 const relayStatusElement = document.querySelector('#relay-status');
 const prestoStatusElement = document.querySelector('#presto-status');
 const prestoDebugOutput = document.querySelector('#presto-debug-output');
+const vaSelectElement = document.querySelector('#va-select');
+const openPagePanelButton = document.querySelector('#open-page-panel');
+const quickRepliesToggleButton = document.querySelector('#quick-replies-toggle');
+const popupQuickRepliesElement = document.querySelector('#popup-quick-replies');
+const quickReplyCompanyElement = document.querySelector('#quick-reply-company');
+const quickReplyNameElement = document.querySelector('#quick-reply-name');
+const quickReplyStatusElement = document.querySelector('#quick-reply-status');
+const popupQuickReplyGroupsElement = document.querySelector('#popup-quick-reply-groups');
+const popupFollowupListElement = document.querySelector('#popup-followup-list');
+const VA_STORAGE_KEY = 'selectedVaName';
+const QUICK_REPLY_COMPANY_KEY = 'lastQuickReplyCompany';
 let prestoDebug = null;
 let selectedFilter = 'all';
+let selectedVaName = '';
 const checkUpdateButton = document.querySelector('#check-update');
 const updateStatusElement = document.querySelector('#update-status');
 const UPDATE_STATE_KEY = 'extensionUpdateStatus';
@@ -144,7 +156,8 @@ reviewsElement.addEventListener('click', async (event) => {
     const review = records[`lead:${reviewCard.dataset.id}`];
     if (!review?.lead || !review?.quote) { summaryElement.textContent = 'This saved quote is incomplete and cannot be copied.'; return; }
     try {
-      await navigator.clipboard.writeText(CleaningQuoteMessages.approvedMessage(review));
+      const reviewWithVa = selectedVaName ? { ...review, lead: { ...review.lead, vaName: selectedVaName } } : review;
+      await navigator.clipboard.writeText(CleaningQuoteMessages.approvedMessage(reviewWithVa));
       summaryElement.textContent = 'Message copied to clipboard.';
     } catch {
       summaryElement.textContent = 'Could not copy the message.';
@@ -316,6 +329,7 @@ function manualLead() {
     platform: 'manual',
     companyName: CleaningQuoteEngine.COMPANIES[company]?.name || null,
     customerName: manualFields.name.value.trim() || null,
+    vaName: selectedVaName || null,
     serviceType: CleaningQuoteEngine.SERVICES[manualFields.service.value],
     squareFeet: manualFields.squareFeet.value.trim() || null,
     bedrooms: manualFields.bedrooms.value.trim() || null,
@@ -508,8 +522,189 @@ document.querySelector('#manual-copy-message').addEventListener('click', async (
     manualSummaryElement.textContent = 'Could not copy the quote message.';
   }
 });
+
+function quickReplyContext() {
+  const company = quickReplyCompanyElement?.value || manualFields.company?.value || 'kacs';
+  const customerName = quickReplyNameElement?.value?.trim() || manualFields.name?.value?.trim() || null;
+  const lead = { ...manualLead(), customerName, vaName: selectedVaName || null };
+  const quote = CleaningQuoteEngine.calculateQuote(lead, { companyOverride: company, discountPercent: manualFields.discount?.value?.trim() || '' });
+  return { company, lead, quote };
+}
+
+function renderPopupQuickReplies() {
+  if (!popupQuickReplyGroupsElement || typeof CleaningQuoteMessages === 'undefined') return;
+  const { company, lead, quote } = quickReplyContext();
+  const groups = CleaningQuoteMessages.quickReplies?.(company, lead, quote, { vaName: selectedVaName }) || [];
+  const attendant = CleaningQuoteMessages.resolveAttendant?.(company, { vaName: selectedVaName }, lead) || '';
+  if (quickReplyStatusElement && !quickReplyStatusElement.dataset.copied) {
+    quickReplyStatusElement.textContent = `${CleaningQuoteEngine.COMPANIES[company]?.name || company} · VA: ${attendant || 'Padrão'}`;
+  }
+  popupQuickReplyGroupsElement.innerHTML = groups.map((group) => `
+    <div class="quick-reply-group">
+      <strong>${escapeHtml(group.category)}</strong>
+      <div class="quick-reply-buttons">
+        ${(group.items || []).map((item) => `<button type="button" class="quiet quick-reply-btn" data-quick-reply-id="${escapeHtml(item.id)}" title="${escapeHtml(item.message || '')}">${escapeHtml(item.label)}</button>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  if (popupFollowupListElement && CleaningQuoteMessages.followUpStatus) {
+    const status = CleaningQuoteMessages.followUpStatus(company, lead, '', { vaName: selectedVaName });
+    const archiveMsg = CleaningQuoteMessages.archivingMessage?.(company, lead, { vaName: selectedVaName }) || '';
+    const stagesHtml = status?.situations
+      ? status.situations.map((situation) => `<div class="popup-followup-group"><strong>${escapeHtml(situation.title)}</strong><div class="quick-reply-buttons">${situation.messages.map((item) => `<button type="button" class="quiet quick-reply-btn" data-follow-up-situation="${situation.number}" data-follow-up-stage="${item.stage}" title="${escapeHtml(item.message)}">Follow-up ${item.stage}</button>`).join('')}</div></div>`).join('')
+      : `<div class="quick-reply-buttons">${(Array.isArray(status) ? status : []).map((stage) => `<button type="button" class="quiet quick-reply-btn" data-follow-up-number="${stage.number}" title="${escapeHtml(stage.message)}">Follow-up ${stage.number}</button>`).join('')}</div>`;
+    popupFollowupListElement.innerHTML = `${stagesHtml}<div class="quick-reply-buttons"><button type="button" class="quiet quick-reply-btn" data-copy-archiving="true" title="${escapeHtml(archiveMsg)}">Copy archiving message</button></div>`;
+  }
+}
+
+async function loadVaAndQuickReplySettings() {
+  const stored = await chrome.storage.local.get([VA_STORAGE_KEY, QUICK_REPLY_COMPANY_KEY]).catch(() => ({}));
+  if (typeof stored[VA_STORAGE_KEY] === 'string') {
+    selectedVaName = stored[VA_STORAGE_KEY];
+    if (vaSelectElement) vaSelectElement.value = selectedVaName;
+  }
+  if (typeof stored[QUICK_REPLY_COMPANY_KEY] === 'string' && stored[QUICK_REPLY_COMPANY_KEY] && quickReplyCompanyElement) {
+    quickReplyCompanyElement.value = stored[QUICK_REPLY_COMPANY_KEY];
+  } else if (quickReplyCompanyElement && manualFields.company?.value) {
+    quickReplyCompanyElement.value = manualFields.company.value;
+  }
+  if (quickReplyNameElement && manualFields.name?.value && !quickReplyNameElement.value) {
+    quickReplyNameElement.value = manualFields.name.value;
+  }
+  try {
+    const tabs = await chrome.tabs?.query?.({ active: true, currentWindow: true });
+    const tab = tabs?.[0];
+    if (tab?.id && chrome.tabs?.sendMessage) {
+      const context = await chrome.tabs.sendMessage(tab.id, { type: 'GET_ACTIVE_LEAD_CONTEXT' }).catch(() => null);
+      if (context?.ok) {
+        if (context.company && quickReplyCompanyElement) quickReplyCompanyElement.value = context.company;
+        if (context.customerName && quickReplyNameElement) quickReplyNameElement.value = context.customerName;
+      }
+    }
+  } catch {
+    // Ignore tabs where the content script is not active.
+  }
+  renderPopupQuickReplies();
+}
+
+vaSelectElement?.addEventListener('change', async () => {
+  selectedVaName = vaSelectElement.value || '';
+  if (quickReplyStatusElement) delete quickReplyStatusElement.dataset.copied;
+  await chrome.storage.local.set({ [VA_STORAGE_KEY]: selectedVaName });
+  renderPopupQuickReplies();
+});
+
+openPagePanelButton?.addEventListener('click', async () => {
+  try {
+    const tabs = await chrome.tabs?.query?.({ active: true, currentWindow: true });
+    const tab = tabs?.[0];
+    if (!tab?.id) throw new Error('Nenhuma aba ativa encontrada.');
+    const response = await chrome.tabs.sendMessage(tab.id, { type: 'OPEN_ASSISTANT_PANEL', openQuickReplies: true });
+    if (!response?.ok) throw new Error('Use o painel rápido aqui no popup ou abra Yelp, Thumbtack ou Quo.');
+    if (quickReplyStatusElement) quickReplyStatusElement.textContent = 'Painel aberto na página atual.';
+  } catch {
+    if (popupQuickRepliesElement) popupQuickRepliesElement.hidden = false;
+    if (quickReplyStatusElement) quickReplyStatusElement.textContent = 'Esta aba não suporta o painel flutuante — use os Quick Replies abaixo.';
+    renderPopupQuickReplies();
+  }
+});
+
+quickRepliesToggleButton?.addEventListener('click', () => {
+  if (!popupQuickRepliesElement) return;
+  popupQuickRepliesElement.hidden = !popupQuickRepliesElement.hidden;
+  if (!popupQuickRepliesElement.hidden) renderPopupQuickReplies();
+});
+
+quickReplyCompanyElement?.addEventListener('change', async () => {
+  if (manualFields.company) manualFields.company.value = quickReplyCompanyElement.value;
+  if (quickReplyStatusElement) delete quickReplyStatusElement.dataset.copied;
+  await chrome.storage.local.set({ [QUICK_REPLY_COMPANY_KEY]: quickReplyCompanyElement.value });
+  saveManualDraft();
+  renderPopupQuickReplies();
+});
+
+quickReplyNameElement?.addEventListener('input', () => {
+  if (manualFields.name) manualFields.name.value = quickReplyNameElement.value;
+  if (quickReplyStatusElement) delete quickReplyStatusElement.dataset.copied;
+  saveManualDraft();
+  renderPopupQuickReplies();
+});
+
+popupQuickReplyGroupsElement?.addEventListener('click', async (event) => {
+  const button = event.target.closest?.('[data-quick-reply-id]') || (event.target.dataset?.quickReplyId ? event.target : null);
+  const id = button?.dataset?.quickReplyId;
+  if (!id || typeof CleaningQuoteMessages === 'undefined') return;
+  const { company, lead, quote } = quickReplyContext();
+  const message = CleaningQuoteMessages.quickReplyMessage(id, company, lead, quote, { vaName: selectedVaName });
+  if (!message) return;
+  try {
+    await navigator.clipboard.writeText(message);
+    if (quickReplyStatusElement) {
+      quickReplyStatusElement.dataset.copied = 'true';
+      quickReplyStatusElement.textContent = `Copiado: ${button.textContent}`;
+    }
+  } catch {
+    if (quickReplyStatusElement) quickReplyStatusElement.textContent = 'Não foi possível copiar o quick reply.';
+  }
+});
+
+popupFollowupListElement?.addEventListener('click', async (event) => {
+  if (typeof CleaningQuoteMessages === 'undefined') return;
+  const { company, lead } = quickReplyContext();
+  const status = CleaningQuoteMessages.followUpStatus(company, lead, '', { vaName: selectedVaName });
+  const archiveBtn = event.target.closest?.('[data-copy-archiving]') || (event.target.dataset?.copyArchiving ? event.target : null);
+  if (archiveBtn) {
+    const archiveMsg = CleaningQuoteMessages.archivingMessage?.(company, lead, { vaName: selectedVaName }) || '';
+    if (!archiveMsg) return;
+    try {
+      await navigator.clipboard.writeText(archiveMsg);
+      if (quickReplyStatusElement) {
+        quickReplyStatusElement.dataset.copied = 'true';
+        quickReplyStatusElement.textContent = 'Mensagem de arquivamento copiada.';
+      }
+    } catch {
+      if (quickReplyStatusElement) quickReplyStatusElement.textContent = 'Não foi possível copiar a mensagem.';
+    }
+    return;
+  }
+  const situationBtn = event.target.closest?.('[data-follow-up-situation]') || (event.target.dataset?.followUpSituation ? event.target : null);
+  if (situationBtn) {
+    const situation = status?.situations?.find((item) => item.number === Number(situationBtn.dataset.followUpSituation));
+    const stage = situation?.messages?.find((item) => item.stage === Number(situationBtn.dataset.followUpStage));
+    if (!stage?.message) return;
+    try {
+      await navigator.clipboard.writeText(stage.message);
+      if (quickReplyStatusElement) {
+        quickReplyStatusElement.dataset.copied = 'true';
+        quickReplyStatusElement.textContent = `Copiado: ${situation.title} · Follow-up ${stage.stage}`;
+      }
+    } catch {
+      if (quickReplyStatusElement) quickReplyStatusElement.textContent = 'Não foi possível copiar o follow-up.';
+    }
+    return;
+  }
+  const followUpBtn = event.target.closest?.('[data-follow-up-number]') || (event.target.dataset?.followUpNumber ? event.target : null);
+  if (followUpBtn) {
+    const stage = (Array.isArray(status) ? status : []).find((item) => item.number === Number(followUpBtn.dataset.followUpNumber));
+    if (!stage?.message) return;
+    try {
+      await navigator.clipboard.writeText(stage.message);
+      if (quickReplyStatusElement) {
+        quickReplyStatusElement.dataset.copied = 'true';
+        quickReplyStatusElement.textContent = `Copiado: Follow-up ${stage.number}`;
+      }
+    } catch {
+      if (quickReplyStatusElement) quickReplyStatusElement.textContent = 'Não foi possível copiar o follow-up.';
+    }
+  }
+});
+
 loadReviews();
 loadRelaySettings();
 loadLastPrestoScan();
 loadCleanerAvailabilityStatus();
-loadManualDraft().then(renderManualQuote);
+loadManualDraft().then(() => {
+  renderManualQuote();
+  return loadVaAndQuickReplySettings();
+});

@@ -3,8 +3,15 @@
   'use strict';
 
   const BUILD_VERSION = '0.1.40';
+  const VA_STORAGE_KEY = 'selectedVaName';
+  const LAST_COMPANY_KEY = 'lastQuickReplyCompany';
+  let selectedVaName = '';
+  let lastQuickReplyCompany = 'kacs';
+  let manualPanelOpen = false;
   let companyOverride = null;
   let discountPercent = '';
+  let includeEstimatedTime = false;
+  let quickRepliesOpen = false;
   let lead = null;
   let originalServiceType = null;
   let quote = null;
@@ -83,14 +90,32 @@
 
   const root = document.createElement('aside');
   root.id = 'cleaning-quote-assistant';
+  const launcher = document.createElement('button');
+  launcher.id = 'cleaning-quote-launcher';
+  launcher.type = 'button';
+  launcher.textContent = '⚡ Presto VA · Quick Replies';
+  function mountLauncher() {
+    if (root.isConnected) {
+      launcher.remove();
+      return;
+    }
+    const container = document.body || document.documentElement;
+    if (container && launcher.parentElement !== container) container.append(launcher);
+  }
   function mountRoot() {
     // Keep the assistant inside the document body. Yelp installs global event
     // handling around its application root; mounting beside it under <html>
     // made native controls visually change without consistently delivering
     // their events to this content script.
+    launcher.remove();
     const container = document.body || document.documentElement;
     if (root.parentElement !== container) container.append(root);
   }
+  launcher.addEventListener('click', () => {
+    manualPanelOpen = true;
+    quickRepliesOpen = true;
+    refreshLeadPanel(true);
+  });
   let panelDrag = null;
   root.addEventListener('pointerdown', (event) => {
     if (!event.target.closest('header') || event.target.closest('button')) return;
@@ -119,17 +144,21 @@
     return /(^|\.)yelp\.com(\.br)?$/i.test(location.hostname)
       && /^\/leads_center\/[^/]+\/leads\/[^/?#]+/.test(location.pathname);
   }
+  function isSupportedQuickReplyHost() {
+    return /(^|\.)(yelp\.com(\.br)?|thumbtack\.com|quo\.com|openphone\.com)$/i.test(location.hostname);
+  }
   function refreshLeadPanel(force = false) {
     const route = currentRoute();
-    if (!isYelpLeadPage()) {
+    if (!isYelpLeadPage() && !manualPanelOpen) {
       activeRoute = route;
       root.remove();
+      if (isSupportedQuickReplyHost()) mountLauncher();
       return;
     }
     if (!force && route === activeRoute && root.isConnected) return;
     if (force && route === activeRoute && panelEdited && root.isConnected) return;
     activeRoute = route;
-    companyOverride = null;
+    if (isYelpLeadPage()) companyOverride = null;
     discountPercent = '';
     queueMode = false;
     queueFeedback = '';
@@ -138,6 +167,16 @@
     selectedAvailability = new Set();
     confirmationFeedback = '';
     lead = CleaningLeadExtractor.extractLead();
+    if (lead) lead.vaName = selectedVaName || null;
+    if (!isYelpLeadPage()) {
+      quickRepliesOpen = true;
+      const detected = CleaningQuoteEngine.resolveCompany(lead?.companyName);
+      if (detected !== 'unknown') {
+        companyOverride = null;
+      } else if (!companyOverride) {
+        companyOverride = lastQuickReplyCompany || 'kacs';
+      }
+    }
     if (manualServiceOverrideLeadId && manualServiceOverrideLeadId !== lead?.id) {
       manualServiceOverride = null;
       manualServiceOverrideLeadId = null;
@@ -146,13 +185,13 @@
     if (manualServiceOverride && lead?.id === manualServiceOverrideLeadId) applyManualServiceType(manualServiceOverride);
     requestedDetails = new Set(['squareFeet', 'bedrooms', 'bathrooms'].filter((field) => !String(lead?.[field] || '').trim()));
     detailsRequestOpen = false;
-    quote = CleaningQuoteEngine.calculateQuote(lead, { discountPercent });
+    quote = CleaningQuoteEngine.calculateQuote(lead, { companyOverride, discountPercent, includeEstimatedTime });
     logDebug('Capture attempt', captureSnapshot(lead, quote).lead || {});
     if (!root.isConnected) mountRoot();
     render();
     loadExistingReview(route, lead?.id);
     restoreStoredManualServiceOverride(route, lead?.id);
-    ensureCleaningType(route);
+    if (isYelpLeadPage()) ensureCleaningType(route);
   }
 
   async function restoreStoredManualServiceOverride(route, leadId) {
@@ -180,6 +219,12 @@
     if (existingReview) logDebug('Existing lead review found', { state: existingReview.state, savedAt: existingReview.savedAt });
     render();
   }
+  const EXTRACTED_LEAD_FIELDS = ['companyName', 'customerName', 'phoneNumber', 'serviceType', 'frequency', 'squareFeet', 'bedrooms', 'bathrooms', 'cleaningProducts', 'extraServices', 'location'];
+  function hasMoreExtractedFields(currentLead, nextLead) {
+    if (!nextLead || nextLead.captureSource === 'yelp_unresolved') return false;
+    if (!currentLead || currentLead.captureSource === 'yelp_unresolved') return true;
+    return EXTRACTED_LEAD_FIELDS.some((field) => !String(currentLead[field] || '').trim() && Boolean(String(nextLead[field] || '').trim()));
+  }
   function ensureCleaningType(route) {
     clearTimeout(missingServiceRetry);
     if (CleaningQuoteEngine.resolveService(lead?.serviceType, lead?.frequency)) {
@@ -188,18 +233,23 @@
     }
     logDebug('Cleaning type missing; retry scheduled', { delayMs: 750, serviceType: lead?.serviceType, frequency: lead?.frequency });
     missingServiceRetry = setTimeout(() => {
-      if (currentRoute() !== route || !isYelpLeadPage()) return;
+      if (currentRoute() !== route || !isYelpLeadPage() || panelEdited) return;
       const retryLead = CleaningLeadExtractor.extractLead();
-      const retryQuote = CleaningQuoteEngine.calculateQuote(retryLead);
+      const retryQuote = CleaningQuoteEngine.calculateQuote(retryLead, { companyOverride, discountPercent, includeEstimatedTime });
       logDebug('Cleaning type retry', captureSnapshot(retryLead, retryQuote).lead || {});
-      if (CleaningQuoteEngine.resolveService(retryLead?.serviceType, retryLead?.frequency)) {
+      if (CleaningQuoteEngine.resolveService(retryLead?.serviceType, retryLead?.frequency) || hasMoreExtractedFields(lead, retryLead)) {
         lead = retryLead;
+        if (lead) lead.vaName = selectedVaName || null;
         originalServiceType = lead.serviceType || null;
-        quote = retryQuote;
+        if (manualServiceOverride && lead?.id === manualServiceOverrideLeadId) applyManualServiceType(manualServiceOverride);
+        if (!detailsRequestOpen) {
+          requestedDetails = new Set(['squareFeet', 'bedrooms', 'bathrooms'].filter((field) => !String(lead?.[field] || '').trim()));
+        }
+        quote = CleaningQuoteEngine.calculateQuote(lead, { companyOverride, discountPercent, includeEstimatedTime });
         logDebug('Cleaning type resolved after retry', { service: quote.service, source: lead.captureSource });
         render();
         loadExistingReview(route, lead.id);
-        return;
+        if (CleaningQuoteEngine.resolveService(lead?.serviceType, lead?.frequency)) return;
       }
       ensureCleaningType(route);
     }, 750);
@@ -208,7 +258,16 @@
     const routeAtNavigation = currentRoute();
     if (!isYelpLeadPage()) {
       activeRoute = routeAtNavigation;
-      root.remove();
+      if (manualPanelOpen) {
+        panelEdited = false;
+        refreshLeadPanel(true);
+        [200, 600].forEach((delay) => setTimeout(() => {
+          if (currentRoute() === routeAtNavigation && manualPanelOpen && !panelEdited) refreshLeadPanel(true);
+        }, delay));
+      } else {
+        root.remove();
+        if (isSupportedQuickReplyHost()) mountLauncher();
+      }
       return;
     }
     // Yelp may update only the URL fragment while interacting with a control.
@@ -229,7 +288,7 @@
     root.innerHTML = '<header><span>Lead estimate</span><button data-action="close" aria-label="Close">×</button></header><section class="result"><p><strong>Loading lead data…</strong><small>Waiting for Yelp to finish loading this lead.</small></p></section>';
     [3000, 4500, 6000].forEach((delay) => setTimeout(() => {
       if (currentRoute() === routeAtNavigation) refreshLeadPanel(true);
-      if (delay === 6000 && queuedRoute === routeAtNavigation) queuedRoute = null;
+      if (delay >= 3000 && queuedRoute === routeAtNavigation) queuedRoute = null;
     }, delay));
   }
 
@@ -427,6 +486,9 @@
   function canCopyApprovedMessage() {
     return quote?.status === 'ready_for_review' || (Object.hasOwn(CleaningQuoteEngine.COMPANIES, quote?.company) && quote?.status === 'missing_size');
   }
+  function canCopyCompanyScripts() {
+    return Boolean(quote?.company && Object.hasOwn(CleaningQuoteEngine.COMPANIES, quote.company));
+  }
   function input(label, value, key, type = 'text') {
     return `<label>${label}<input data-field="${key}" type="${type}" value="${escapeHtml(value ?? '')}"></label>`;
   }
@@ -456,8 +518,8 @@
     return conversation?.innerText || '';
   }
   function followUpButtons() {
-    if (!canCopyApprovedMessage()) return '<button disabled>Copy follow-up</button>';
-    const followUps = CleaningQuoteMessages.followUpStatus(quote.company, lead, conversationText());
+    if (!canCopyCompanyScripts()) return '<button disabled>Copy follow-up</button>';
+    const followUps = CleaningQuoteMessages.followUpStatus(quote.company, lead, conversationText(), { vaName: selectedVaName });
     if (!Array.isArray(followUps)) {
       const suggestion = followUps.suggestedSituation
         ? `<small>Suggested from this chat: Situation ${followUps.suggestedSituation}. Confirm whether the client replied before choosing Situation 1 or 3.</small>`
@@ -467,6 +529,12 @@
     }
     const buttons = followUps.map((followUp) => `<button data-action="copy-follow-up" data-follow-up-number="${followUp.number}" ${followUp.sent ? 'disabled' : ''}>${followUp.sent ? `Follow-up ${followUp.number} sent` : `Copy follow-up ${followUp.number}`}</button>`).join('');
     return `${buttons}<button data-action="copy-archiving">Copy archiving</button>`;
+  }
+  function quickRepliesMarkup() {
+    if (typeof CleaningQuoteMessages.quickReplies !== 'function') return '';
+    const groups = CleaningQuoteMessages.quickReplies(quote?.company, lead, quote, { vaName: selectedVaName });
+    const categories = groups.map((group) => `<div class="quick-reply-group"><small><strong>${escapeHtml(group.category)}</strong></small><div class="quick-reply-buttons">${group.items.map((item) => `<button type="button" data-action="copy-quick-reply" data-quick-reply-id="${escapeHtml(item.id)}" data-quick-reply-label="${escapeHtml(item.label)}">${escapeHtml(item.label)}</button>`).join('')}</div></div>`).join('');
+    return `<details class="details-request quick-replies" ${quickRepliesOpen ? 'open' : ''}><summary><strong>Quick replies &amp; scripts (bases)</strong></summary><small>Click any template to copy it personalized for this client and company.</small>${categories}</details>`;
   }
   function detailsRequestMarkup() {
     if (!detailsRequestOpen) return '';
@@ -508,6 +576,7 @@
     root.innerHTML = `
         <header><span>Presto VA Assistant <small>v${BUILD_VERSION}</small></span><div><button type="button" data-action="debug" aria-expanded="${debugVisible}">Debug</button><button data-action="close" aria-label="Close">×</button></div></header>
       <section class="lead-fields">
+        <label>VA (Atendente)<select data-field="vaName"><option value="">Company default (Padrão)</option>${(CleaningQuoteMessages.VA_NAMES || ['Frank', 'Mary', 'Andie', 'Luiza', 'Carol', 'Oliver']).map((name) => `<option value="${escapeHtml(name)}" ${selectedVaName === name ? 'selected' : ''}>${escapeHtml(name)}</option>`).join('')}</select></label>
         ${input('Company name', lead.companyName, 'companyName')}
         ${input('Customer name', lead.customerName, 'customerName')}
         <label>Company pricing<select data-field="companyOverride"><option value="">Auto-detect</option>${Object.entries(CleaningQuoteEngine.COMPANIES).map(([key, company]) => `<option value="${key}" ${companyOverride === key ? 'selected' : ''}>${escapeHtml(company.name)}</option>`).join('')}</select></label>
@@ -516,9 +585,10 @@
         ${input('Square feet', lead.squareFeet, 'squareFeet', 'number')}
         ${input('Bedrooms', lead.bedrooms, 'bedrooms', 'number')}
         ${input('Bathrooms', lead.bathrooms, 'bathrooms', 'number')}
+        <label class="checkbox-field"><input data-field="includeEstimatedTime" type="checkbox" ${quote.company === 'kacs' || includeEstimatedTime ? 'checked' : ''} ${quote.company === 'kacs' ? 'disabled' : ''}><span>Inserir tempo estimado na cotação${quote.company === 'kacs' ? ' (obrigatório na KACS)' : ''}</span></label>
       </section>
       <section class="result"><p>${displayQuote(quote)}</p><dl><div><dt>Detected company</dt><dd>${escapeHtml(CleaningQuoteEngine.COMPANIES[quote.company]?.name || 'Not recognized')}</dd></div><div><dt>Size band</dt><dd>${quote.size.band ? `up to ${quote.size.band} sq. ft.` : 'Not resolved'}</dd></div><div><dt>Source</dt><dd>${quote.size.source || 'Manual review'}</dd></div><div><dt>Status</dt><dd>${quote.status.replaceAll('_', ' ')}</dd></div></dl></section>
-        ${availabilityMarkup()}${detailsRequestMarkup()}${confirmationFeedback ? `<p class="existing-review">${escapeHtml(confirmationFeedback)}</p>` : ''}${reviewMessage}<footer><button data-action="copy-approved" ${canCopyApprovedMessage() ? '' : 'disabled'}>${copyLabel}</button>${quote.status === 'missing_size' ? '' : detailsAction}${followUpButtons()}<button data-action="availability" ${quote.status !== 'ready_for_review' ? 'disabled' : ''}>Find availability</button>${primaryAction}</footer>${debugMarkup()}`;
+        ${availabilityMarkup()}${detailsRequestMarkup()}${confirmationFeedback ? `<p class="existing-review">${escapeHtml(confirmationFeedback)}</p>` : ''}${reviewMessage}<footer><button data-action="copy-approved" ${canCopyApprovedMessage() ? '' : 'disabled'}>${copyLabel}</button>${quote.status === 'missing_size' ? '' : detailsAction}${followUpButtons()}${quickRepliesMarkup()}<button data-action="availability" ${quote.status !== 'ready_for_review' ? 'disabled' : ''}>Find availability</button>${primaryAction}</footer>${debugMarkup()}`;
     bindPanelControls();
     lastManualServiceValue = root.querySelector('[data-field="serviceType"]')?.value || '';
   }
@@ -614,27 +684,49 @@
   function bindPanelControls() {
     bindManualServiceControl();
   }
+  function backfillPassiveLeadFields(sourceLead) {
+    if (!lead || !sourceLead || sourceLead.id !== lead.id) return;
+    for (const key of ['extraServices', 'cleaningProducts', 'phoneNumber', 'location', 'frequency']) {
+      if (!String(lead[key] || '').trim() && String(sourceLead[key] || '').trim()) {
+        lead[key] = sourceLead[key];
+      }
+    }
+  }
   function refreshCustomerNameForCopy() {
+    const current = CleaningLeadExtractor.extractLead();
+    backfillPassiveLeadFields(current);
     const field = root.querySelector('[data-field="customerName"]');
     const entered = field?.value.trim();
     if (entered) lead.customerName = CleaningLeadExtractor.firstName(entered);
-    else {
-      const current = CleaningLeadExtractor.extractLead();
-      lead.customerName = current?.id === lead.id ? current.customerName || null : null;
-    }
+    else lead.customerName = current?.id === lead.id ? current.customerName || null : null;
     if (field) field.value = lead.customerName || '';
     return Boolean(lead.customerName);
   }
   async function recalculate({ serviceId = null } = {}) {
     panelEdited = true;
+    backfillPassiveLeadFields(CleaningLeadExtractor.extractLead());
     root.querySelectorAll('[data-field]').forEach((field) => {
-      if (field.dataset.field === 'companyOverride') companyOverride = field.value || null;
-      else if (field.dataset.field === 'discountPercent') discountPercent = field.value.trim();
+      if (field.dataset.field === 'companyOverride') {
+        companyOverride = field.value || null;
+        if (companyOverride) {
+          lastQuickReplyCompany = companyOverride;
+          void chrome.storage.local.set({ [LAST_COMPANY_KEY]: companyOverride }).catch(() => {});
+        }
+      } else if (field.dataset.field === 'vaName') {
+        const nextVa = field.value || '';
+        if (nextVa !== selectedVaName) {
+          selectedVaName = nextVa;
+          void chrome.storage.local.set({ [VA_STORAGE_KEY]: selectedVaName }).catch(() => {});
+        }
+        if (lead) lead.vaName = selectedVaName || null;
+      } else if (field.dataset.field === 'discountPercent') discountPercent = field.value.trim();
+      else if (field.dataset.field === 'includeEstimatedTime') includeEstimatedTime = Boolean(field.checked);
       else if (field.dataset.field === 'serviceType') { if (!serviceId) applyManualServiceType(field.value); }
       else lead[field.dataset.field] = field.value || null;
     });
+    if (lead) lead.vaName = selectedVaName || null;
     if (serviceId) applyManualServiceType(serviceId);
-    quote = CleaningQuoteEngine.calculateQuote(lead, { companyOverride, discountPercent });
+    quote = CleaningQuoteEngine.calculateQuote(lead, { companyOverride, discountPercent, includeEstimatedTime });
     logDebug('Manual cleaning type applied', { selected: serviceId || root.querySelector('[data-field="serviceType"]')?.value || null, service: quote.service, status: quote.status });
     await syncApprovedMessage({ invalidateAvailability: true });
     render();
@@ -650,6 +742,26 @@
         (document.body || document.documentElement).append(notice);
       }
       sendResponse({ ok: true });
+      return undefined;
+    }
+    if (message?.type === 'OPEN_ASSISTANT_PANEL') {
+      manualPanelOpen = true;
+      quickRepliesOpen = true;
+      refreshLeadPanel(true);
+      sendResponse({ ok: true });
+      return undefined;
+    }
+    if (message?.type === 'GET_ACTIVE_LEAD_CONTEXT') {
+      const current = lead || CleaningLeadExtractor.extractLead();
+      const detectedCompany = (quote?.company && quote.company !== 'unknown')
+        ? quote.company
+        : (companyOverride || CleaningQuoteEngine.resolveCompany(current?.companyName));
+      sendResponse({
+        ok: true,
+        company: detectedCompany && detectedCompany !== 'unknown' ? detectedCompany : null,
+        customerName: current?.customerName || null,
+        vaName: selectedVaName || null
+      });
       return undefined;
     }
     if (message?.type !== 'SET_ACTIVE_LEAD_SERVICE' && message?.type !== 'PICKER_SERVICE_APPLY') return undefined;
@@ -704,6 +816,18 @@
     }).catch(() => {});
   }, 300);
   chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes[VA_STORAGE_KEY]) {
+      const nextVa = typeof changes[VA_STORAGE_KEY].newValue === 'string' ? changes[VA_STORAGE_KEY].newValue : '';
+      if (nextVa !== selectedVaName) {
+        selectedVaName = nextVa;
+        if (lead) lead.vaName = selectedVaName || null;
+        if (root.isConnected && !queueMode) render();
+      }
+    }
+    if (areaName === 'local' && changes[LAST_COMPANY_KEY]) {
+      const nextCompany = typeof changes[LAST_COMPANY_KEY].newValue === 'string' ? changes[LAST_COMPANY_KEY].newValue : '';
+      if (nextCompany) lastQuickReplyCompany = nextCompany;
+    }
     if (areaName !== 'local' || !lead?.id || !root.isConnected || serviceChangeInFlight) return;
     const key = manualServiceOverrideKey(lead.id);
     const stored = changes[key]?.newValue;
@@ -719,7 +843,11 @@
   });
   root.addEventListener('click', async (event) => {
     const action = event.target.closest?.('[data-action]')?.dataset.action;
-    if (action === 'close') root.remove();
+    if (action === 'close') {
+      manualPanelOpen = false;
+      root.remove();
+      if (isSupportedQuickReplyHost()) mountLauncher();
+    }
     if (action === 'debug') {
       debugVisible = !debugVisible;
       logDebug('Debug toggled', { enabled: debugVisible });
@@ -740,6 +868,7 @@
     if (action === 'back') { queueMode = false; render(); }
     if (action === 'copy-approved' && canCopyApprovedMessage()) {
       try {
+        refreshCustomerNameForCopy();
         const slots = selectedAvailabilitySlots();
         const reviewToCopy = {
           ...existingReview,
@@ -764,9 +893,10 @@
       }
       render();
     }
-    if (action === 'copy-follow-up' && canCopyApprovedMessage()) {
+    if (action === 'copy-follow-up' && canCopyCompanyScripts()) {
       const hasCustomerName = refreshCustomerNameForCopy();
-      const status = CleaningQuoteMessages.followUpStatus(quote.company, lead, conversationText());
+      if (lead) lead.vaName = selectedVaName || null;
+      const status = CleaningQuoteMessages.followUpStatus(quote.company, lead, conversationText(), { vaName: selectedVaName });
       const number = Number(event.target.dataset.followUpNumber);
       const situation = Number(event.target.dataset.followUpSituation);
       const stage = Number(event.target.dataset.followUpStage);
@@ -786,10 +916,11 @@
       }
       render();
     }
-    if (action === 'copy-archiving' && canCopyApprovedMessage()) {
+    if (action === 'copy-archiving' && canCopyCompanyScripts()) {
       try {
         const hasCustomerName = refreshCustomerNameForCopy();
-        await navigator.clipboard.writeText(CleaningQuoteMessages.archivingMessage(quote.company, lead));
+        if (lead) lead.vaName = selectedVaName || null;
+        await navigator.clipboard.writeText(CleaningQuoteMessages.archivingMessage(quote.company, lead, { vaName: selectedVaName }));
         confirmationFeedback = hasCustomerName ? 'Archiving message copied to clipboard. Review it, then paste it into Yelp when ready.' : 'Archiving message copied with “there”: customer name was not found. Enter it above and copy again.';
         logDebug('Archiving message copied', { company: quote.company });
       } catch {
@@ -798,7 +929,9 @@
       render();
     }
     if (action === 'copy-details-request') {
-      const message = CleaningQuoteMessages.detailsRequestMessage(lead, quote.company, requestedDetails);
+      refreshCustomerNameForCopy();
+      if (lead) lead.vaName = selectedVaName || null;
+      const message = CleaningQuoteMessages.detailsRequestMessage(lead, quote.company, requestedDetails, { vaName: selectedVaName });
       if (!message) return;
       try {
         await navigator.clipboard.writeText(message);
@@ -811,6 +944,24 @@
     if (action === 'open-details-request') {
       detailsRequestOpen = true;
       confirmationFeedback = '';
+      render();
+    }
+    if (action === 'copy-quick-reply') {
+      quickRepliesOpen = true;
+      refreshCustomerNameForCopy();
+      if (lead) lead.vaName = selectedVaName || null;
+      const button = event.target.closest('[data-quick-reply-id]');
+      const replyId = button?.dataset.quickReplyId;
+      const replyLabel = button?.dataset.quickReplyLabel || 'Quick reply';
+      const message = CleaningQuoteMessages.quickReplyMessage?.(replyId, quote?.company, lead, quote, { vaName: selectedVaName });
+      if (!message) return;
+      try {
+        await navigator.clipboard.writeText(message);
+        confirmationFeedback = `${replyLabel} copied to clipboard.`;
+        logDebug('Quick reply copied', { company: quote?.company, replyId });
+      } catch {
+        confirmationFeedback = 'Could not copy the quick reply.';
+      }
       render();
     }
     if (action === 'availability') findAvailability();
@@ -866,6 +1017,7 @@
           render();
           return;
         }
+        refreshCustomerNameForCopy();
         const now = new Date().toISOString();
         const selectedSlots = selectedAvailabilitySlots() || [];
         const availabilitySearch = availability?.status === 'ready'
@@ -946,22 +1098,37 @@
   }, 400);
   let extractionTimer = null;
   const yelpLoadObserver = new MutationObserver((mutations) => {
-    if (queuedRoute || !isYelpLeadPage() || !root.isConnected || mutations.every((mutation) =>
+    if (queuedRoute || panelEdited || !isYelpLeadPage() || !root.isConnected || mutations.every((mutation) =>
       root.contains(mutation.target) || (mutation.addedNodes.length > 0 && [...mutation.addedNodes].every((node) => node.id === 'cleaning-update-reload-notice')))) return;
-    if (quote?.status === 'ready_for_review') return;
     clearTimeout(extractionTimer);
     extractionTimer = setTimeout(() => {
-      if (!isYelpLeadPage() || quote?.status === 'ready_for_review') return;
+      if (panelEdited || !isYelpLeadPage()) return;
       const refreshedLead = CleaningLeadExtractor.extractLead();
-      const refreshedQuote = CleaningQuoteEngine.calculateQuote(refreshedLead);
-      if (refreshedQuote.status === 'ready_for_review') {
+      const refreshedQuote = CleaningQuoteEngine.calculateQuote(refreshedLead, { companyOverride, discountPercent, includeEstimatedTime });
+      if ((refreshedQuote.status === 'ready_for_review' && quote?.status !== 'ready_for_review') || hasMoreExtractedFields(lead, refreshedLead)) {
         lead = refreshedLead;
-        quote = refreshedQuote;
+        if (lead) lead.vaName = selectedVaName || null;
+        originalServiceType = lead.serviceType || originalServiceType;
+        if (manualServiceOverride && lead?.id === manualServiceOverrideLeadId) applyManualServiceType(manualServiceOverride);
+        if (!detailsRequestOpen) {
+          requestedDetails = new Set(['squareFeet', 'bedrooms', 'bathrooms'].filter((field) => !String(lead?.[field] || '').trim()));
+        }
+        quote = CleaningQuoteEngine.calculateQuote(lead, { companyOverride, discountPercent, includeEstimatedTime });
         render();
         loadExistingReview(currentRoute(), lead.id);
       }
     }, 250);
   });
   yelpLoadObserver.observe(document.documentElement, { childList: true, subtree: true });
+  chrome.storage.local.get([VA_STORAGE_KEY, LAST_COMPANY_KEY]).then((records) => {
+    if (typeof records?.[VA_STORAGE_KEY] === 'string') {
+      selectedVaName = records[VA_STORAGE_KEY];
+      if (lead) lead.vaName = selectedVaName || null;
+    }
+    if (typeof records?.[LAST_COMPANY_KEY] === 'string' && records[LAST_COMPANY_KEY]) {
+      lastQuickReplyCompany = records[LAST_COMPANY_KEY];
+    }
+    if (root.isConnected && !queueMode) render();
+  }).catch(() => {});
   refreshLeadPanel(true);
 })();

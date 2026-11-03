@@ -157,6 +157,71 @@ const multiBusinessApolloState = {
 check(extractor.extractYelpLeadFromState(multiBusinessApolloState, '/leads_center/ut/leads/target')?.companyName === 'UT Cleans', 'Apollo extraction must use the route business instead of the first cached business');
 check(extractor.extractYelpLeadFromState(multiBusinessApolloState, '/leads_center/unknown/leads/target')?.companyName === null, 'Apollo extraction must not use a business unrelated to the current route');
 check(extractor.squareFeetFromText('We have a townhome about 2000 sq ft.') === '2000', 'Yelp details should recognize square footage written before the unit');
+check(extractor.squareFeetFromText("It's a 1600-sq ft SFH") === '1600', 'Yelp details should recognize hyphenated square footage like 1600-sq ft');
+check(extractor.squareFeetFromText('Size band\nup to 800 sq. ft.') === null && extractor.squareFeetFromText('up to 1,600 sq. ft.') === null, 'Size band labels from the assistant panel must never be read back as lead square footage');
+if (fs.existsSync('../docs/Pagina_TODOSOSCAMPOS.txt')) {
+  const allFieldsSource = fs.readFileSync('../docs/Pagina_TODOSOSCAMPOS.txt', 'utf8');
+  const allFieldsState = extractor.yelpApolloStateFromScripts([{ textContent: allFieldsSource }]);
+  const davidLead = extractor.extractYelpLeadFromState(allFieldsState, '/leads_center/FAHbiW72jLTiNDvcOptrfg/leads/FEgziYpvDMjoPbEJKEPogw');
+  check(
+    davidLead?.companyName === 'KACS Cleaning Services'
+      && davidLead?.customerName === 'David'
+      && davidLead?.phoneNumber === '+14085824680'
+      && davidLead?.squareFeet === '1600'
+      && davidLead?.bedrooms === '4'
+      && davidLead?.bathrooms === '2'
+      && davidLead?.serviceType === 'Regular home cleaning'
+      && davidLead?.frequency === 'Not sure'
+      && davidLead?.cleaningProducts === 'Eco-friendly or green'
+      && davidLead?.extraServices === 'Oven cleaning, Refrigerator cleaning, Tile and grout cleaning, Upholstery cleaning, Window cleaning'
+      && davidLead?.location === '94539',
+    'All fields from Pagina_TODOSOSCAMPOS.txt must be accurately extracted'
+  );
+  const davidQuote = engine.calculateQuote(davidLead);
+  check(davidQuote.size.band === 1600 && davidQuote.size.source === 'square_feet' && davidQuote.estimatedHours.minimum === 3.5 && davidQuote.estimatedHours.maximum === 5, 'David quote must use the extracted 1600 sq ft instead of the 4 bed / 2 bath fallback');
+  const davidMessage = messages.approvedMessage({ lead: davidLead, quote: davidQuote });
+  check(
+    davidMessage.includes('🧽 Additional Services Requested: Oven cleaning, Refrigerator cleaning, Tile and grout cleaning, Window cleaning')
+      && !davidMessage.includes('🧽 Additional Services Requested: Oven cleaning, Refrigerator cleaning, Tile and grout cleaning, Upholstery cleaning')
+      && davidMessage.includes('⚠️ Please note that we do not provide professional upholstery cleaning.'),
+    'David quote message must list supported extra services while excluding Upholstery cleaning from Additional Services Requested and adding the upholstery disclaimer'
+  );
+}
+check(extractor.answersAfterLabel('Do you need any of these other services?\nPet odor treatment\nRefrigerator cleaning\nCarpet cleaning\nWindow cleaning\nHow many bathrooms are in your home?\n1 bathroom', [/other services/i], { multiLine: true }) === 'Pet odor treatment, Refrigerator cleaning, Carpet cleaning, Window cleaning', 'DOM question parser must retain all multi-line answers until the next question');
+const daSilvaSource = fs.readFileSync('../docs/HTML DASILVA YELP.txt', 'utf8');
+const daSilvaState = extractor.yelpApolloStateFromScripts([{ textContent: daSilvaSource }]);
+const erikaLead = extractor.extractYelpLeadFromState(daSilvaState, '/leads_center/NKYK8RrTUSDhdbaI848bjg/leads/Idvm6GwUyJQ3axn0uBMCTg');
+check(erikaLead?.extraServices === 'Pet odor treatment, Refrigerator cleaning, Carpet cleaning, Window cleaning' && erikaLead?.cleaningProducts === 'Non-toxic, Pet-safe', 'Apollo leads without surveyQuestionAnswers must extract multi-line extraServices and cleaningProducts from description');
+const joeLead = extractor.extractYelpLeadFromState(daSilvaState, '/leads_center/NKYK8RrTUSDhdbaI848bjg/leads/OdAmC_3w1I_8NCccjWL0XQ');
+check(joeLead?.squareFeet === '2200' && joeLead?.cleaningProducts === 'Eco-friendly or green, Non-toxic, Child-safe' && joeLead?.extraServices === 'Tile and grout cleaning', 'Apollo description fallback must extract square footage, products, and extra services');
+const monthlyPtLead = extractor.extractYelpLeadFromState(yelpState, '/leads_center/FAHbiW72jLTiNDvcOptrfg/leads/Xuq2l51veJPs5acpIowqxw');
+check(engine.calculateQuote(monthlyPtLead).recurringCleaning?.id === 'monthly', 'Portuguese frequency labels in Yelp Apollo state must resolve to the matching recurring cadence');
+const previousLocation = global.location;
+global.location = { hostname: 'biz.yelp.com.br', pathname: '/leads_center/FAHbiW72jLTiNDvcOptrfg/leads/MrZNCinFbOb-yfxtXnvU2Q', search: '', href: 'https://biz.yelp.com.br/leads_center/FAHbiW72jLTiNDvcOptrfg/leads/MrZNCinFbOb-yfxtXnvU2Q' };
+const yelpMainNode = {
+  id: 'yelp-app',
+  innerText: [
+    'KACS Cleaning Services\nConcord, CA 94520\nMy Leads',
+    'New Lead Details\nJulie Z.\nDeep cleaning\nAntioch, CA 94531\nMensagem\nLead created: 29/10/26, 10:22am\n(831) 345-7271\nHow often do you want your home cleaned?\nJust once\nDo you need any of these other services?\nCarpet cleaning\nWindow cleaning\nDo you require any of these cleaning product types?\nEco-friendly or green\nNon-toxic\nHow many bedrooms are in your home?\n1 bedroom\nHow many bathrooms are in your home?\n1 bathroom\nIn what location do you need the service?\n94531\nPreferências de cookies'
+  ].join('\n')
+};
+const assistantNode = {
+  id: 'cleaning-quote-assistant',
+  innerText: 'Presto VA Assistant v0.1.40\nSize band\nup to 800 sq. ft.\nSource\nbedrooms_bathrooms'
+};
+global.document = {
+  scripts: [],
+  body: { children: [yelpMainNode, assistantNode], innerText: `${yelpMainNode.innerText}\n${assistantNode.innerText}` },
+  querySelector: () => null,
+  querySelectorAll: (selector) => selector === '[role="region"][aria-label]' ? [mockCustomerRegion('Julie Z.')] : []
+};
+const domExtractedLead = extractor.extractLead();
+check(domExtractedLead.captureSource === 'yelp_dom' && domExtractedLead.squareFeet === null, 'DOM extraction must not ingest the assistant panel size band as squareFeet');
+check(domExtractedLead.location === 'Antioch, CA 94531', 'DOM extraction must read the lead location instead of the business sidebar address');
+check(domExtractedLead.phoneNumber === '(831) 345-7271', 'DOM extraction must capture the customer phone number from the lead details header');
+check(domExtractedLead.extraServices === 'Carpet cleaning, Window cleaning' && domExtractedLead.cleaningProducts === 'Eco-friendly or green, Non-toxic', 'DOM extraction must capture all multi-line extra services and cleaning products');
+global.document = previousDocument;
+global.location = previousLocation;
 check(extractor.surveyAnswer({ surveyQuestionAnswers: [{ question: 'Do you require any of these cleaning product types?', answers: ['Eco-friendly or green', 'Non-toxic', 'Pet-safe'] }] }, /cleaning product types/i) === 'Eco-friendly or green, Non-toxic, Pet-safe', 'All Yelp multi-select answers should be retained');
 check(engine.calculateQuote(yelpLead).service === 'first_cleaning', 'The saved Yelp example should resolve Regular home cleaning / Once');
 const individualYelpSource = fs.readFileSync('../docs/pagina_individual_leadsYelp.txt', 'utf8');
@@ -193,11 +258,13 @@ for (const company of Object.keys(engine.COMPANIES)) {
 }
 check(expressArchive.includes('Express House Cleaning') && expressArchive.includes('(510) 757-9573'), 'Express archiving message must use its script contact details');
 const limitationsMessage = messages.approvedMessage({ lead: { customerName: 'Sample', bedrooms: 2, bathrooms: 1, extraServices: 'Pet odor treatment, Rug cleaning, Upholstery cleaning' }, quote: { company: 'kacs', service: 'deep_cleaning', serviceLabel: 'Deep Cleaning', estimatedHours: { minimum: 2, maximum: 3.5 } } });
-check(limitationsMessage.includes('🧼 A quick note about the additional services requested:') && limitationsMessage.includes('• Professional rug shampoo/extraction cleaning is not included') && !limitationsMessage.includes('carpet or rug shampoo') && limitationsMessage.includes('• Professional upholstery cleaning is not included') && limitationsMessage.includes('• Specialized pet odor treatment and guaranteed odor removal are not included') && !limitationsMessage.includes('• we ') && !limitationsMessage.includes('⚠️ Please note'), 'Multiple requested limitations must use one softer grouped note');
+check(limitationsMessage.includes('🧼 A quick note about the additional services requested:') && limitationsMessage.includes('• Professional rug shampoo/extraction cleaning is not included') && !limitationsMessage.includes('carpet or rug shampoo') && limitationsMessage.includes('• Professional upholstery cleaning is not included') && limitationsMessage.includes('• Specialized pet odor treatment and guaranteed odor removal are not included') && !limitationsMessage.includes('• we ') && !limitationsMessage.includes('⚠️ Please note') && !limitationsMessage.includes('Additional Services Requested:'), 'Multiple requested limitations must use one softer grouped note and not list unsupported items under Additional Services Requested');
 const carpetAndRugMessage = messages.approvedMessage({ lead: { extraServices: 'Carpet cleaning, Rug cleaning' }, quote: { company: 'jheys', serviceLabel: 'First Cleaning', amount: 250 } });
-check(carpetAndRugMessage.includes('professional carpet or rug shampoo/extraction cleaning, but we can vacuum carpeted areas and rugs'), 'A request for both carpet and rug cleaning should retain the combined limitation');
+check(carpetAndRugMessage.includes('professional carpet or rug shampoo/extraction cleaning, but we can vacuum carpeted areas and rugs') && !carpetAndRugMessage.includes('Additional Services Requested:'), 'A request for both carpet and rug cleaning should retain the combined limitation without listing them as included services');
 const singleLimitationMessage = messages.approvedMessage({ lead: { extraServices: 'Upholstery cleaning' }, quote: { company: 'jheys', serviceLabel: 'First Cleaning', amount: 250 } });
-check(singleLimitationMessage.includes('⚠️ Please note that we do not provide professional upholstery cleaning.'), 'A single requested limitation should retain its direct individual note');
+check(singleLimitationMessage.includes('⚠️ Please note that we do not provide professional upholstery cleaning.') && !singleLimitationMessage.includes('Additional Services Requested:'), 'A single requested limitation should retain its direct individual note without listing Upholstery cleaning under Additional Services Requested');
+const mixedExtraServicesMessage = messages.approvedMessage({ lead: { customerName: 'Erika', bedrooms: 2, bathrooms: 1, extraServices: 'Pet odor treatment, Refrigerator cleaning, Carpet cleaning, Window cleaning' }, quote: { company: 'dasilva', service: 'deep_cleaning', serviceLabel: 'Deep Cleaning', amount: 195, priceRange: { minimum: 195, maximum: 295 } } });
+check(mixedExtraServicesMessage.includes('🧽 Additional Services Requested: Refrigerator cleaning, Window cleaning') && !mixedExtraServicesMessage.includes('Additional Services Requested: Pet odor') && mixedExtraServicesMessage.includes('🧼 A quick note about the additional services requested:') && mixedExtraServicesMessage.includes('• Professional carpet shampoo/extraction cleaning is not included') && mixedExtraServicesMessage.includes('• Specialized pet odor treatment and guaranteed odor removal are not included'), 'Mixed extraServices must keep only supported services in Additional Services Requested and explain unsupported ones in the limitation note');
 const jheysLimitationsMessage = messages.approvedMessage({ lead: { extraServices: 'Rug cleaning' }, quote: { company: 'jheys', serviceLabel: 'First Cleaning', amount: 250 } });
 check(!jheysLimitationsMessage.includes('final price before beginning.\n\n\nPlease note'), 'Jhey’s limitation note must not create a double blank paragraph');
 check(jheysLimitationsMessage.indexOf('Estimated investment') < jheysLimitationsMessage.indexOf('rug shampoo/extraction') && jheysLimitationsMessage.indexOf('rug shampoo/extraction') < jheysLimitationsMessage.indexOf('Team: 2'), 'Jhey’s limitations must appear immediately after the price range');
@@ -230,4 +297,58 @@ const expressFollowUps = messages.followUpStatus('express', { customerName: 'Sam
 check(expressFollowUps.suggestedSituation === 4 && expressFollowUps.situations[3].messages[2].message.includes('plans have changed'), 'Express must identify a quote that followed requested details and retain all follow-up stages');
 check(messages.archivingMessage('kacs', { customerName: 'Sample' }).includes('Hi Sample!') && messages.archivingMessage('kacs', { customerName: 'Sample' }).includes('(925) 438-0657'), 'KACS archiving message should use the configured client greeting and contact details');
 check(messages.archivingMessage('jheys', { customerName: 'Sample' }).includes("Hi Sample, thank you again for reaching out to Jhey's Cleaning.") && messages.archivingMessage('jheys', { customerName: 'Sample' }).includes('(925) 515-5090'), 'Jhey’s archiving message should use the configured client greeting and contact details');
+
+// Stage 1 checks: includeEstimatedTime option, detailsRequestMessage signatures, homeDetails & playbook follow-ups
+const kacsForcedTimeQuote = engine.calculateQuote({ companyName: 'KACS Cleaning Services', bedrooms: 3, bathrooms: 2, serviceType: 'First Cleaning' }, { includeEstimatedTime: false });
+check(kacsForcedTimeQuote.includeEstimatedTime === true && messages.approvedMessage({ lead: { customerName: 'Sample' }, quote: kacsForcedTimeQuote }).includes('3.5-5 hours'), 'KACS must keep estimated time mandatory even if includeEstimatedTime is false');
+
+for (const companyName of configuredCompanies.filter((name) => name !== 'KACS Cleaning Services')) {
+  const lead = { companyName, customerName: 'Sample', bedrooms: 3, bathrooms: 2, serviceType: 'Deep Cleaning', extraServices: 'Oven cleaning' };
+  const withoutTime = engine.calculateQuote(lead, { includeEstimatedTime: false });
+  const withTime = engine.calculateQuote(lead, { includeEstimatedTime: true });
+  const msgWithoutTime = messages.approvedMessage({ lead, quote: withoutTime });
+  const msgWithTime = messages.approvedMessage({ lead, quote: withTime });
+  check(!/⏱️\s*Estimated time/i.test(msgWithoutTime), `${companyName}: estimated time must be omitted when includeEstimatedTime is false`);
+  check(/⏱️\s*Estimated time/i.test(msgWithTime) && msgWithTime.includes('4.5') && msgWithTime.includes('6'), `${companyName}: estimated time must be included when includeEstimatedTime is true`);
+  check(msgWithoutTime.includes('🏠 Home: 3 Bedrooms / 2 Bathrooms') && msgWithoutTime.includes('🧽 Additional Services Requested: Oven cleaning'), `${companyName}: quote message must include homeDetails`);
+}
+
+const utDetailsReq = messages.detailsRequestMessage({ customerName: 'Mari' }, 'utcleans', ['squareFeet']);
+check(utDetailsReq.includes('Thank you for reaching out to UT Cleans!') && utDetailsReq.includes('Best regards,\nUT Cleans\n📞 (925) 202-0504') && !utDetailsReq.includes('KACS'), 'UT Cleans detailsRequestMessage must use UT Cleans name and signature');
+const maryDetailsReq = messages.detailsRequestMessage({ customerName: 'Mari' }, 'marys', ['bedrooms', 'bathrooms']);
+check(maryDetailsReq.includes("Thank you for reaching out to Mary's House Cleaning!") && maryDetailsReq.includes("Warm regards,\nMary's House Cleaning\n📞 (925) 905-8387") && !maryDetailsReq.includes('KACS'), "Mary's detailsRequestMessage must use Mary's name and signature");
+
+const maryFollowUps = messages.followUpStatus('marys', { customerName: 'Mari' }, 'Estimated price: $250–$350');
+check(maryFollowUps.situations[0].messages[0].message.includes("This is Oliver from Mary's House Cleaning") && maryFollowUps.situations[0].messages[0].message.includes("Warm regards,\nMary's House Cleaning\n📞 (925) 905-8387"), "Mary's follow-ups must use Oliver and the mandatory Warm regards signature");
+const utFollowUps = messages.followUpStatus('utcleans', { customerName: 'Mari' }, 'First Visit Estimate: $250–$350');
+check(utFollowUps.situations[0].messages[0].message.includes('what you thought about the cleaning estimate') && utFollowUps.situations[0].messages[0].message.includes('Best regards,\nUT Cleans\n📞 (925) 202-0504'), 'UT Cleans follow-ups must use its playbook script and Best regards signature');
+check(daSilvaFollowUps.situations[0].messages[0].message.includes("we'll be happy to help"), 'Da Silva Situation 1 Follow-up 1 must use we will be happy to help');
+
+// Stage 2 checks: quickReplies & quickReplyMessage
+for (const company of Object.keys(engine.COMPANIES)) {
+  const lead = { customerName: 'David', bedrooms: '3', bathrooms: '2', squareFeet: '1600', location: 'Pleasanton', serviceType: 'Deep Cleaning' };
+  const sampleQuote = engine.calculateQuote({ ...lead, companyName: engine.COMPANIES[company].name }, { companyOverride: company });
+  const groups = messages.quickReplies(company, lead, sampleQuote);
+  check(groups.length === 3 && groups.every((g) => g.items.length > 0), `${company}: quickReplies must return all 3 categories`);
+  const cleanerOffer = messages.quickReplyMessage('cleaner_job_offer', company, lead, sampleQuote);
+  check(cleanerOffer.includes('cliente David') && cleanerOffer.includes('3bed 2bath 1600sqft') && cleanerOffer.includes('Pleasanton'), `${company}: cleaner_job_offer must interpolate lead and quote details`);
+  const bookingMsg = messages.quickReplyMessage('booking_confirmation', company, lead, sampleQuote);
+  check(/Hi David[!,]/.test(bookingMsg) && bookingMsg.includes('Pleasanton'), `${company}: booking_confirmation must include customer name and address`);
+}
+check(messages.quickReplyMessage('payment_info', 'kacs', { customerName: 'David' }, {}).includes('Juliana dos Santos Paixao'), 'KACS payment_info must include Juliana dos Santos Paixao');
+check(messages.quickReplyMessage('payment_info', 'jheys', { customerName: 'David' }, {}).includes('Jheyce Souza Barcelo'), 'Jheys payment_info must include Jheyce Souza Barcelo');
+check(messages.quickReplyMessage('payment_info', 'express', { customerName: 'David' }, {}).includes('Marilda Neves'), 'Express payment_info must include Marilda Neves');
+check(messages.quickReplyMessage('payment_info', 'utcleans', { customerName: 'David' }, {}).includes('Victor Teles Netto'), 'UT Cleans payment_info must include Victor Teles Netto');
+
+const customerQuickReplyIds = [
+  'deep_vs_regular', 'why_sqft', 'yelp_masked_phone', 'move_out_pitch', 'checklist_intro',
+  'budget_objection', 'upfront_deposit', 'needs_time', 'found_better_price', 'chose_another', 'no_longer_needed',
+  'missed_call', 'booking_confirmation', 'payment_info', 'payment_reminder', 'post_cleaning_thanks', 'recurring_offer'
+];
+for (const replyId of customerQuickReplyIds) {
+  const companyKeys = Object.keys(engine.COMPANIES);
+  const rendered = companyKeys.map((company) => messages.quickReplyMessage(replyId, company, { customerName: 'David', location: 'Pleasanton' }, { amount: 325, priceRange: { minimum: 325, maximum: 425 }, serviceLabel: 'Deep Cleaning' }));
+  check(new Set(rendered).size === companyKeys.length, `${replyId}: every company must have its own unique brand voice and message`);
+}
+
 console.log('Pricing logic checks passed.');

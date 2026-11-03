@@ -1,0 +1,16 @@
+'use strict';
+const assert = require('node:assert/strict');
+const { parseRoute, resolveIdentity } = require('./quo-identity');
+const route = parseRoute('/inbox/PNabc123/c/CNabc123');
+const mapping = { PNabc123: 'jheys' };
+const conversations = [{ id: 'CNabc123', phoneNumberId: 'PNabc123', participants: ['+15551234567'] }];
+const contacts = [{ defaultFields: { firstName: 'Taylor', phoneNumbers: [{ value: '+15551234567' }] } }];
+assert.deepEqual(resolveIdentity(route, mapping, conversations, contacts), { status: 'resolved', company: 'jheys', customerName: 'Taylor' });
+assert.equal(parseRoute('/inbox/PNabc123'), null);
+assert.equal(resolveIdentity(route, {}, conversations, contacts).status, 'company_unmapped');
+assert.equal(resolveIdentity(route, mapping, [{ ...conversations[0], phoneNumberId: 'PNother' }], contacts).status, 'conversation_unresolved');
+assert.equal(resolveIdentity(route, mapping, [{ ...conversations[0], participants: ['+15551234567', '+15557654321'] }], contacts).status, 'participant_unresolved');
+assert.equal(resolveIdentity(route, mapping, conversations, [...contacts, ...contacts]).status, 'contact_ambiguous');
+assert.equal(resolveIdentity(route, mapping, conversations, []).status, 'contact_not_found');
+assert.equal(resolveIdentity(route, mapping, conversations, [{ defaultFields: { firstName: '', phoneNumbers: [{ value: '+15551234567' }] } }]).status, 'name_missing');
+console.log('Quo identity checks passed.');

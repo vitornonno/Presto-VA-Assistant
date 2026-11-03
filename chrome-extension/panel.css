@@ -6,6 +6,8 @@
 #cleaning-quote-assistant section, #cleaning-quote-assistant footer { padding: 12px 14px; }
 #cleaning-quote-assistant .lead-fields { display: grid; gap: 8px; }
 #cleaning-quote-assistant label { display: grid; gap: 3px; font-size: 12px; font-weight: 600; }
+#cleaning-quote-assistant label.checkbox-field { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+#cleaning-quote-assistant label.checkbox-field input[type="checkbox"] { width: 15px; height: 15px; margin: 0; padding: 0; accent-color: #2457a6; }
 #cleaning-quote-assistant input, #cleaning-quote-assistant select { box-sizing: border-box; width: 100%; padding: 7px; border: 1px solid #bdc8d7; border-radius: 5px; color: #172033; background: #fff; }
 #cleaning-quote-assistant .service-picker { width: 100%; height: 34px; border: 0; }
 #cleaning-quote-assistant .move-prompt { width: 100%; height: 78px; border: 0; }
@@ -53,6 +55,11 @@
 #cleaning-quote-assistant .follow-up-situations > details { margin-top: 8px; padding: 8px; border: 1px solid #eadcb7; border-radius: 5px; background: #fffdf7; }
 #cleaning-quote-assistant .follow-up-situations summary { cursor: pointer; }
 #cleaning-quote-assistant .follow-up-situations details > div { grid-template-columns: repeat(3, 1fr); }
+#cleaning-quote-assistant footer .quick-replies { flex: 1 0 100%; padding: 8px; border: 1px solid #eadcb7; border-radius: 5px; background: #fffdf7; }
+#cleaning-quote-assistant .quick-replies summary { cursor: pointer; }
+#cleaning-quote-assistant .quick-replies .quick-reply-group { display: grid; gap: 6px; margin-top: 8px; }
+#cleaning-quote-assistant .quick-replies .quick-reply-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#cleaning-quote-assistant .quick-replies .quick-reply-buttons button { flex: initial; padding: 6px 8px; font-size: 11px; text-align: left; }
 #cleaning-quote-assistant footer button { flex: 1 1 150px; padding: 8px; border: 1px solid #2457a6; border-radius: 5px; color: #2457a6; background: #fff; cursor: pointer; font-weight: 700; }
 #cleaning-quote-assistant footer button:last-child { color: #fff; background: #2457a6; } #cleaning-quote-assistant button:disabled { opacity: .5; cursor: not-allowed; }
 #cleaning-quote-assistant .queue-list { display: grid; gap: 10px; max-height: 500px; overflow-y: auto; }
@@ -69,3 +76,5 @@
 #cleaning-quote-assistant .debug summary { cursor: pointer; font-weight: 700; } #cleaning-quote-assistant .debug pre { max-height: 260px; margin: 8px 0 0; overflow: auto; white-space: pre-wrap; font: 11px/1.35 Consolas, monospace; }
 #cleaning-quote-assistant .debug button { margin-top: 8px; padding: 3px 6px; border: 1px solid #93a4be; border-radius: 4px; color: #d9e1ec; background: #253247; cursor: pointer; font: 11px Arial, sans-serif; }
 #cleaning-quote-assistant .debug small { display: block; margin-top: 8px; color: #a7f3d0; }
+#cleaning-quote-launcher { position: fixed; z-index: 2147483646; right: 16px; bottom: 16px; padding: 9px 14px; border: 1px solid #174a8b; border-radius: 999px; color: #fff; background: #2457a6; box-shadow: 0 8px 24px rgba(25, 39, 62, .22); cursor: pointer; font: 700 13px/1.2 Arial, sans-serif; }
+#cleaning-quote-launcher:hover { background: #174a8b; }

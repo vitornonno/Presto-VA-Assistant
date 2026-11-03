@@ -8,10 +8,28 @@
   </head>
   <body>
     <main>
-      <header><div class="brand"><img src="presto-logo.png" alt="" width="36" height="36"><h1>Presto VA Assistant</h1></div><div class="queue-tools"><button id="manual-quote-toggle" class="quiet" type="button">Manual quote</button><button id="refresh" title="Refresh saved quotes" aria-label="Refresh saved quotes">↻</button></div></header>
+      <header><div class="brand"><img src="presto-logo.png" alt="" width="36" height="36"><h1>Presto VA Assistant</h1></div><div class="queue-tools"><button id="quick-replies-toggle" class="quiet" type="button">Quick replies</button><button id="manual-quote-toggle" class="quiet" type="button">Manual quote</button><button id="refresh" title="Refresh saved quotes" aria-label="Refresh saved quotes">↻</button></div></header>
       <section class="update-settings">
         <button id="check-update" type="button">Verificar atualizações</button>
         <small id="update-status" role="status" aria-live="polite"></small>
+      </section>
+      <section class="va-bar">
+        <label>VA (Atendente)<select id="va-select"><option value="">Company default (Padrão)</option><option value="Frank">Frank</option><option value="Mary">Mary</option><option value="Andie">Andie</option><option value="Luiza">Luiza</option><option value="Carol">Carol</option><option value="Oliver">Oliver</option></select></label>
+        <button id="open-page-panel" class="quiet" type="button">Abrir painel na página</button>
+      </section>
+      <section id="popup-quick-replies" class="manual-quote quick-replies-panel" hidden>
+        <h2>Quick replies &amp; scripts</h2>
+        <p>Use on Thumbtack, Quo, Yelp, or any tab. Pick the company and client name to copy scripts signed with your selected VA.</p>
+        <div class="manual-grid">
+          <label>Company<select id="quick-reply-company"><option value="kacs">KACS Cleaning Services</option><option value="jheys">Jhey's Cleaning</option><option value="dasilva">Da Silva Cleaning Services</option><option value="utcleans">UT Cleans</option><option value="marys">Mary's House Cleaning</option><option value="gleam">Gleam Team Housecleaning</option><option value="express">Express House Cleaning</option></select></label>
+          <label>Client name<input id="quick-reply-name" type="text" placeholder="Optional"></label>
+        </div>
+        <p id="quick-reply-status" class="manual-summary" role="status" aria-live="polite"></p>
+        <div id="popup-quick-reply-groups" class="popup-quick-reply-groups"></div>
+        <details id="popup-followups-details" class="popup-followups">
+          <summary><strong>Follow-ups &amp; Archiving</strong></summary>
+          <div id="popup-followup-list" class="popup-followup-list"></div>
+        </details>
       </section>
       <section id="manual-quote" class="manual-quote" hidden>
         <h2>Manual quote</h2>

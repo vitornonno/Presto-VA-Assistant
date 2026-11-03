@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Presto VA Assistant",
-  "version": "0.1.40",
+  "version": "1.0.0",
   "description": "Calculates internal preliminary cleaning quotes for Yelp and Thumbtack leads.",
   "icons": { "128": "presto-logo.png" },
   "permissions": ["storage", "activeTab", "clipboardWrite", "nativeMessaging"],
-  "host_permissions": ["https://*.yelp.com/*", "https://*.yelp.com.br/*", "https://*.thumbtack.com/*", "https://app.bepresto.com/*", "https://*.workers.dev/*"],
+  "host_permissions": ["https://*.yelp.com/*", "https://*.yelp.com.br/*", "https://*.thumbtack.com/*", "https://*.quo.com/*", "https://*.openphone.com/*", "https://app.bepresto.com/*", "https://*.workers.dev/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -17,7 +17,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.yelp.com/*", "https://*.yelp.com.br/*", "https://*.thumbtack.com/*"],
+      "matches": ["https://*.yelp.com/*", "https://*.yelp.com.br/*", "https://*.thumbtack.com/*", "https://*.quo.com/*", "https://*.openphone.com/*"],
       "js": ["pricing.js", "extractors.js", "quote-messages.js", "cleaner-availability.js", "content.js"],
       "css": ["panel.css"],
       "run_at": "document_idle"
@@ -30,6 +30,6 @@
   ],
   "web_accessible_resources": [{
     "resources": ["service-picker.html", "service-picker.css", "service-picker.js"],
-    "matches": ["https://*.yelp.com/*", "https://*.yelp.com.br/*"]
+    "matches": ["https://*.yelp.com/*", "https://*.yelp.com.br/*", "https://*.thumbtack.com/*", "https://*.quo.com/*", "https://*.openphone.com/*"]
   }]
 }
