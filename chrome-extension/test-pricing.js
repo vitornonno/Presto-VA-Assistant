@@ -207,7 +207,7 @@ const yelpMainNode = {
 };
 const assistantNode = {
   id: 'cleaning-quote-assistant',
-  innerText: 'Presto VA Assistant v0.1.40\nSize band\nup to 800 sq. ft.\nSource\nbedrooms_bathrooms'
+  innerText: 'Presto VA Assistant v1.0.0\nSize band\nup to 800 sq. ft.\nSource\nbedrooms_bathrooms'
 };
 global.document = {
   scripts: [],
