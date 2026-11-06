@@ -64,6 +64,18 @@ const gleamFixedMessage = messages.approvedMessage({ lead: { customerName: 'Alex
 check(gleamFixedMessage.includes('$195') && !gleamFixedMessage.includes('$195–$195') && !gleamFixedMessage.includes('Non-toxic'), 'Gleam fixed prices show one value and do not promise non-toxic products without a request');
 const gleamPayment = messages.quickReplyMessage('payment_info', 'gleam', { customerName: 'Alex' }, gleamSmall);
 check(gleamPayment.includes('https://venmo.com/u/hiltonmoura') && gleamPayment.includes('HILTON SEIXAS MOURA'), 'Gleam payment details follow the new script');
+for (const [serviceType, expected, forbidden] of [
+  ['Deep Cleaning', 'After your initial deep cleaning', 'construction dust or debris'],
+  ['Move-in Cleaning', 'help make your move easier', 'construction dust or debris'],
+  ['Move-out Cleaning', 'help make your move easier', 'construction dust or debris'],
+  ['Post-Construction Cleaning', 'amount of construction dust or debris', 'help make your move easier'],
+  ['First Cleaning', 'Final pricing will be confirmed after the first cleaning', 'construction dust or debris']
+]) {
+  const lead = { companyName: 'Gleam Team Housecleaning', customerName: 'Alex', squareFeet: 1600, bedrooms: 3, bathrooms: 2, serviceType };
+  const quote = engine.calculateQuote(lead);
+  const text = messages.approvedMessage({ lead, quote });
+  check(text.includes(expected) && !text.includes(forbidden) && text.includes('Gleam Team Housecleaning'), `Gleam ${serviceType} must use its own quote script`);
+}
 quote = engine.calculateQuote({ companyName: "Mary's House Cleaning", bedrooms: 3, bathrooms: 2, serviceType: 'Deep Cleaning' }, { discountPercent: 10, discountTarget: 'deep_cleaning' });
 check(quote.amount === 295 && quote.discount?.percentage === 10, 'A selected discount must apply to the matching primary cleaning type and round up to $5');
 check(quote.priceRange.maximum === 385, 'The discount must apply to both ends of the original price range');

@@ -798,8 +798,40 @@
     ];
     return lines.join('\n');
   }
+  function gleamQuoteMessage(review) {
+    const quote = review.quote || {}; const lead = review.lead || {};
+    const minimum = quote.priceRange?.minimum ?? quote.amount;
+    const maximum = quote.priceRange?.maximum ?? Number(quote.amount || 0) + 100;
+    const price = minimum === maximum ? `$${minimum}` : `$${minimum}–$${maximum}`;
+    const name = lead.customerName || 'there';
+    const isMove = quote.service === 'move_in' || quote.service === 'move_out';
+    const isPost = quote.service === 'post_construction';
+    const isFirst = quote.service === 'first_cleaning';
+    const message = [`Hi ${name}${isFirst ? '! 😊' : '! '}`.trim(), ''];
+    if (isMove) message.push('Thank you so much for reaching out to Gleam Team! We’d love the opportunity to help make your move easier with a detailed Move-In/Move-Out Cleaning.');
+    else if (isPost) message.push('Thank you so much for reaching out to Gleam Team! We’d love the opportunity to help make your post-construction project easier with a detailed cleaning.');
+    else message.push(`Thank you so much for reaching out to ${isFirst ? 'Gleam Team Housecleaning' : 'Gleam Team'}!`);
+    message.push('', `Based on the details you shared about your home, here is what we ${isMove || isPost || isFirst ? 'suggest' : 'recommend'}:`, '', `🧼 ${quote.serviceLabel}${isMove || isPost || isFirst ? ':' : ''}`, ...homeDetails(lead), `💰 Estimated price: ${price}`);
+    if ((review.includeEstimatedTime ?? quote.includeEstimatedTime) && quote.estimatedHours) message.push(`⏱️ Estimated time: ${hours(quote.estimatedHours.minimum)}–${hours(quote.estimatedHours.maximum)} hours`);
+    message.push('👥 Two-person cleaning team');
+    if (/non.?toxic|non.?toxico/i.test(String(lead.cleaningProducts || ''))) message.push('🍃 Non-toxic cleaning products requested');
+    if (isMove || (quote.service === 'deep_cleaning' && /oven|refrigerator|fridge/i.test(String(lead.extraServices || '')))) message.push('✨ Oven and refrigerator interior cleaning included');
+    if (quote.discount?.percentage) message.push(`✨ ${quote.discount.percentage}% new customer discount applied`);
+    if (isMove) message.push('', "For the most accurate quote, we consider the home’s condition, whether it will be empty, and the level of detail needed.");
+    else if (isPost) message.push('', "For the most accurate quote, we consider the home’s condition, the amount of construction dust or debris, whether the space is empty, and the level of detail needed.");
+    else if (isFirst) message.push('', 'For the most accurate quote, we consider your home’s size, current condition, and cleaning frequency. Final pricing will be confirmed after the first cleaning.');
+    else if (quote.service === 'deep_cleaning') message.push('', 'After your initial deep cleaning, we can provide a fixed quote for maintenance cleaning at a lower rate, helping you keep your home consistently clean and comfortable.');
+    const recurring = recurringCleaningSection(quote); if (recurring.length) message.push('', ...recurring);
+    const limitations = serviceLimitations(lead); if (limitations.length) message.push('', ...separatedParagraphs(limitations));
+    const availability = selectedAvailability(review); if (availability.length) message.push('', ...availability);
+    const noAvailability = noAvailabilityFollowUp(review); if (noAvailability.length) message.push('', ...noAvailability);
+    message.push('', isFirst ? '📋 I’m also attaching a checklist of everything included in our regular cleaning service so you know exactly what to expect.' : 'I am also attaching a checklist of what is included in our cleaning service.', '', `Would you like me to check our availability for your ${isMove ? quote.serviceLabel : isPost ? 'post-construction cleaning' : 'first cleaning'}?`, '', isFirst ? "I’d be happy to help you find a day and a cleaning schedule that works best for you!" : "I’d be happy to help you find a day that works best for you!", '', 'Warmly,', 'Gleam Team Housecleaning', '(925) 515-5461');
+    return message.join('\n');
+  }
+
   function fixedPriceMessage(review) {
     const quote = review.quote || {}; const lead = review.lead || {}; const company = fixedPriceCompanies[quote.company];
+    if (quote.company === 'gleam') return gleamQuoteMessage(review);
     const minimum = quote.priceRange?.minimum ?? quote.amount;
     const maximum = quote.priceRange?.maximum ?? Number(quote.amount || 0) + 100;
     const price = minimum === maximum ? `$${minimum}` : `$${minimum}–$${maximum}`;
@@ -821,18 +853,6 @@
       message.push(`Thank you for providing the details about your home. We truly appreciate the information!`, '', `🧼 Recommended service: ${quote.serviceLabel}`, ...details, `${priceLabel}: ${price}`);
       if (showTime) message.push(`⏱️ Estimated time: ${minHours}–${maxHours} hours`);
       message.push('', 'The final price may depend on the overall condition of the home and the level of cleaning required.', '', 'Our first visit is designed to establish a thorough cleaning foundation, making future maintenance cleanings more efficient and consistent.', '', 'Would you like us to check availability for your preferred date?');
-    } else if (quote.company === 'gleam') {
-      message.push(`Thank you so much for reaching out to ${company.shortName}!`, '', 'Based on the details you shared about your home, here is what we suggest:', '', `🧽 ${quote.serviceLabel}`, ...details, `💲 Estimated price: ${price}`);
-      if (showTime) message.push(`⏱️ Estimated time: ${minHours}–${maxHours} hours`);
-      message.push('👥 Two-person cleaning team');
-      if (/non.?toxic|non.?toxico/i.test(String(lead.cleaningProducts || ''))) message.push('🍃 Non-toxic cleaning products requested');
-      if (quote.service === 'move_in' || quote.service === 'move_out') message.push('✨ Oven and refrigerator interior cleaning included', '', "For the most accurate quote, we consider the home's condition, whether it will be empty, and the level of detail needed.");
-      else if (quote.service === 'deep_cleaning') {
-        if (/oven|refrigerator|fridge/i.test(String(lead.extraServices || ''))) message.push('✨ Oven and refrigerator interior cleaning included');
-        message.push('', 'After your initial deep cleaning, we can provide a fixed quote for maintenance cleaning at a lower rate.');
-      } else if (quote.service === 'post_construction') message.push('', "For the most accurate quote, we consider the home's condition, the amount of construction dust or debris, whether the space is empty, and the level of detail needed.");
-      else if (quote.service === 'first_cleaning') message.push('', "For the most accurate quote, we consider your home's size, current condition, and cleaning frequency. Final recurring pricing will be confirmed after the first cleaning.");
-      message.push('', "We can also share a checklist of what's included in the cleaning service.", '', 'Would you like me to check our availability? I’d be happy to help you find a day that works best for you!');
     } else {
       message.push('Thank you so much for contacting Express House Cleaning! We truly appreciate your interest in our services.', '', "Based on the information provided, here's our estimate for your home:", '', `🧼 ${quote.serviceLabel}`, ...details, '', `💲 Estimated price: ${price}`);
       if (showTime) message.push(`⏱️ Estimated time: Approximately ${minHours} to ${maxHours} hours`);
