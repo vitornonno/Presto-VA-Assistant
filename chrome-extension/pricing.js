@@ -272,7 +272,9 @@
       const rawBaseHours = KACS_HOURS[size.band][SERVICE_INDEX.indexOf(service)];
       const baseHours = roundToNearestHalfHour(rawBaseHours);
       const discountApplies = configuredDiscount !== null && configuredDiscount > 0 && effectiveDiscountTarget === service && !firstRecurringDiscountPercent;
-      const standardPriceRange = { minimum: baseAmount, maximum: baseAmount + 100 };
+      // A known square footage is required to establish the <= 1,000 sq. ft. rule.
+      const gleamFixed = company === 'gleam' && size.source === 'square_feet' && size.squareFeet <= 1000;
+      const standardPriceRange = { minimum: baseAmount, maximum: gleamFixed ? baseAmount : baseAmount + 100 };
       const priceRange = discountApplies ? discountedRange(standardPriceRange, configuredDiscount) : standardPriceRange;
       const amount = priceRange.minimum;
       const recurringCleaning = quotedRecurringFrequency

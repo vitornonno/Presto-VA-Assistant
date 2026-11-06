@@ -38,7 +38,8 @@ const context = {
 vm.runInNewContext(fs.readFileSync(`${__dirname}/popup.js`, 'utf8'), context);
 setTimeout(async () => {
   assert.match(elements.reviews.innerHTML, /Copy message/);
-  assert.match(elements.reviews.innerHTML, /\$0–\$0/);
+  assert.match(elements.reviews.innerHTML, /\$0/);
+  assert.doesNotMatch(elements.reviews.innerHTML, /\$0–\$0/);
   assert.match(elements.reviews.innerHTML, /Unknown date/);
   assert.doesNotMatch(html, /active-lead-service/);
   assert.equal(elements['va-select'].value, 'Luiza');

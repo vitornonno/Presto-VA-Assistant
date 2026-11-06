@@ -227,13 +227,13 @@
       gleam: [
         greeting(name),
         '',
-        'Thank you for reaching out to Gleam Team Housecleaning! 😊',
+        'Thanks for reaching out to Gleam Team Housecleaning.',
         '',
-        'We’d love to help your home shine with our eco-friendly cleaning. To get an accurate quote together for you, could you share:',
+        "Before I put a quote together, I just need a few details about the home so we're not giving you a number based on guesswork:",
         '',
         ...items,
         '',
-        'Whenever you have a moment, send those over and we’ll get your estimate ready right away! 💛',
+        "If it's easier, you can also send a few pictures or a short walkthrough video. Sometimes that's the easiest way for us to get a good feel for the home.",
         '',
         ...companySignatureLines('gleam')
       ],
@@ -420,7 +420,7 @@
         followUp("we haven't received the remaining details we need for the quote", (name) => signed([`Hi ${name}! Just one last check-in from Gleam Team Housecleaning.`, '', "We haven't received the remaining details we need for the quote, so we'll leave things here for now.", '', "If you'd still like an estimate later, just message us whenever you're ready and we'll pick it right back up."], 'Gleam Team Housecleaning', '(925) 515-5461'))
       ] },
       { title: 'Quote sent, client replied, then stopped', signals: 'A quote is in the chat and the client replied after it.', messages: [
-        followUp('circle back on our conversation about the cleaning', (name) => signed([`Hi ${name}! Just wanted to circle back on our conversation about the cleaning.`, '', 'I wanted to see if you were still thinking about moving forward or if something changed on your end.', '', 'No worries either way — just let me know when you get a chance.'], 'Gleam Team Housecleaning', '(925) 515-5461')),
+        followUp('circle back on our conversation about the cleaning', (name) => signed([`Hi ${name}! Just wanted to circle back on our conversation about the cleaning.`, '', "We'd talked about [SERVICE / DATE / DETAIL], and I wanted to see if you were still thinking about moving forward or if something changed on your end.", '', 'No worries either way — just let me know when you get a chance.'], 'Gleam Team Housecleaning', '(925) 515-5461')),
         followUp("not sure if you're still figuring out the timing", (name) => signed([`Hi ${name}, just checking back in with you.`, '', "I'm not sure if you're still figuring out the timing or if the cleaning ended up going in a different direction. If you want to revisit the quote or change anything about the service, I'm happy to take another look."], 'Gleam Team Housecleaning', '(925) 515-5461')),
         followUp('one last message from us for now', (name) => signed([`Hi ${name}! Just one last message from us for now.`, '', "If the cleaning isn't something you need right now, no worries at all. And if you'd like to pick things back up later, just send us a message and we'll be happy to continue where we left off.", '', 'Take care!'], 'Gleam Team Housecleaning', '(925) 515-5461'))
       ] },
@@ -762,15 +762,11 @@
       gleam: [
         greeting(name),
         '',
-        'Thank you for reaching out to Gleam Team! 😊',
+        'Thanks for reaching out to Gleam Team Housecleaning.',
         '',
-        'We’d love to help your home sparkle with our eco-friendly, kid- and pet-safe cleaning! 🌱',
+        `Before I put a quote together for your ${service}, I just need a few details about the home so we're not giving you a number based on guesswork: approximately how many square feet, how many bedrooms and bathrooms, and what type of cleaning you're looking for.`,
         '',
-        `To get an accurate estimate together for your ${service}, could you share your approximate square footage and the number of bedrooms and bathrooms?`,
-        '',
-        'A few photos of the main living spaces are always great if you have a second to snap them.',
-        '',
-        'Whenever you’re ready, send those over and we’ll get your estimate right to you! 💛',
+        "If it's easier, you can also send a few pictures or a short walkthrough video. Sometimes that's the easiest way for us to get a good feel for the home.",
         '',
         ...companySignatureLines('gleam')
       ],
@@ -804,7 +800,9 @@
   }
   function fixedPriceMessage(review) {
     const quote = review.quote || {}; const lead = review.lead || {}; const company = fixedPriceCompanies[quote.company];
-    const price = `$${quote.priceRange?.minimum ?? quote.amount}–$${quote.priceRange?.maximum ?? Number(quote.amount || 0) + 100}`;
+    const minimum = quote.priceRange?.minimum ?? quote.amount;
+    const maximum = quote.priceRange?.maximum ?? Number(quote.amount || 0) + 100;
+    const price = minimum === maximum ? `$${minimum}` : `$${minimum}–$${maximum}`;
     const showTime = Boolean((review.includeEstimatedTime ?? quote.includeEstimatedTime) && quote.estimatedHours);
     const minHours = showTime ? hours(quote.estimatedHours.minimum) : null;
     const maxHours = showTime ? hours(quote.estimatedHours.maximum) : null;
@@ -824,9 +822,17 @@
       if (showTime) message.push(`⏱️ Estimated time: ${minHours}–${maxHours} hours`);
       message.push('', 'The final price may depend on the overall condition of the home and the level of cleaning required.', '', 'Our first visit is designed to establish a thorough cleaning foundation, making future maintenance cleanings more efficient and consistent.', '', 'Would you like us to check availability for your preferred date?');
     } else if (quote.company === 'gleam') {
-      message.push(`Thank you for reaching out to ${company.shortName}! 😊`, '', "Based on what you shared, here's our estimate for your home:", '', `🧽 ${quote.serviceLabel}`, ...details, `💲 Estimated price: ${price}`);
+      message.push(`Thank you so much for reaching out to ${company.shortName}!`, '', 'Based on the details you shared about your home, here is what we suggest:', '', `🧽 ${quote.serviceLabel}`, ...details, `💲 Estimated price: ${price}`);
       if (showTime) message.push(`⏱️ Estimated time: ${minHours}–${maxHours} hours`);
-      message.push('👥 Team of 2 cleaners', '', '🌱 Green cleaning products', '🧒 Kid-safe', '🐶 Pet-safe', '🚫 Non-toxic products', '', 'Our standard cleaning includes dusting and wiping surfaces, including shelves, cleaning kitchen and bathroom surfaces, wiping down the exterior of appliances, vacuuming, mopping, and general tidying of the areas we clean.', '', "We'll also be happy to share our cleaning checklist so you can review everything included in the service.", '', "The initial cleaning price is an estimate and will depend on the home's size, condition, and cleaning needs.");
+      message.push('👥 Two-person cleaning team');
+      if (/non.?toxic|non.?toxico/i.test(String(lead.cleaningProducts || ''))) message.push('🍃 Non-toxic cleaning products requested');
+      if (quote.service === 'move_in' || quote.service === 'move_out') message.push('✨ Oven and refrigerator interior cleaning included', '', "For the most accurate quote, we consider the home's condition, whether it will be empty, and the level of detail needed.");
+      else if (quote.service === 'deep_cleaning') {
+        if (/oven|refrigerator|fridge/i.test(String(lead.extraServices || ''))) message.push('✨ Oven and refrigerator interior cleaning included');
+        message.push('', 'After your initial deep cleaning, we can provide a fixed quote for maintenance cleaning at a lower rate.');
+      } else if (quote.service === 'post_construction') message.push('', "For the most accurate quote, we consider the home's condition, the amount of construction dust or debris, whether the space is empty, and the level of detail needed.");
+      else if (quote.service === 'first_cleaning') message.push('', "For the most accurate quote, we consider your home's size, current condition, and cleaning frequency. Final recurring pricing will be confirmed after the first cleaning.");
+      message.push('', "We can also share a checklist of what's included in the cleaning service.", '', 'Would you like me to check our availability? I’d be happy to help you find a day that works best for you!');
     } else {
       message.push('Thank you so much for contacting Express House Cleaning! We truly appreciate your interest in our services.', '', "Based on the information provided, here's our estimate for your home:", '', `🧼 ${quote.serviceLabel}`, ...details, '', `💲 Estimated price: ${price}`);
       if (showTime) message.push(`⏱️ Estimated time: Approximately ${minHours} to ${maxHours} hours`);
@@ -947,7 +953,7 @@
       return selected.join('\n');
     };
 
-    return [
+    const groups = [
       {
         category: 'Explanations & FAQs',
         items: [
@@ -2120,6 +2126,41 @@
         ]
       }
     ];
+    if (resolvedCompany === 'gleam') {
+      const signedGleam = (lines) => [...lines, '', ...sig].join('\n');
+      const replacements = {
+        missed_call: [`Hi ${name}, this is ${attendant} with Gleam Team Housecleaning! I just tried giving you a call but wasn't able to catch you.`, '', "Whenever you have a moment, tell me a little about the home you'd like cleaned and I'll be happy to help with the next steps."],
+        deep_vs_regular: [`Hi ${name}! The difference between Deep and Regular Cleaning can be a little confusing, so here's the easiest way to look at it.`, '', "Regular Cleaning is for keeping a home that's already in a routine looking good. It takes care of the normal dust and dirt that comes with everyday life, but it's not meant to catch up on months of buildup.", '', 'Deep Cleaning goes further. It gets into things like baseboards, buildup behind and under things, areas that tend to get missed, and dirt that has had more time to settle in.', '', 'So, in simple terms: Regular maintains. Deep gets things caught up.', '', "If we haven't cleaned the home before and it's been a while since the last thorough cleaning, we'd recommend starting with a Deep Cleaning."],
+        why_sqft: ['The square footage helps us get the quote right.', '', 'Two homes can have the same number of bedrooms and bathrooms but be very different in overall size, so knowing the approximate square footage helps us estimate the time the crew will need, price the job fairly and make sure we leave enough time in the schedule.', '', 'We only use it for those purposes.'],
+        yelp_masked_phone: ['The number showing through Yelp is a number the platform uses for communication between customers and businesses. Our actual business number is (925) 515-5461.'],
+        move_out_pitch: ['Move-out cleanings are actually a big part of what we do, so our crews are very familiar with getting a home ready for a landlord or property manager walkthrough.', '', 'We go through the home looking at the dust, residue and buildup that tends to collect over the course of a lease, with the goal of leaving the property ready for inspection.', '', "The one thing we don't handle is carpet shampooing. Everything else you'd normally expect on a move-out checklist is within our scope.", '', "If you already know your move-out date, send it my way and I'll check what we have available."],
+        checklist_intro: ["Here's the full breakdown of what's included in a standard cleaning, room by room.", '', "Take a look when you have a chance. If there's something specific you'd like us to add that isn't listed, just let me know and I'll check what we can do."],
+        budget_objection: [`Thanks for being upfront with me about your budget, ${name}. I completely understand wanting to stay within a certain number.`, '', `For a home this size, ${priceDisplay} is where our pricing lands based on the time and work involved, so unfortunately there's not much room to move the price itself.`, '', "But if you'd like, send me a few pictures of the spaces and I can take another look at the scope. We can see whether there's a way to adjust what's included and get closer to what you had in mind."],
+        upfront_deposit: [`Thanks for bringing that up, ${name}. It's completely fair to want to understand how the deposit works before committing.`, '', "The deposit isn't an extra charge on top of the cleaning. Whatever you pay upfront comes directly off the balance due on the day of the cleaning.", '', 'For move-outs, we ask for it because once we reserve a crew for a vacant property, that time is taken off the schedule for someone else. We started doing this after a few last-minute cancellations left our crews with an open slot and no job.', '', "Of course, whatever you decide is completely okay. There's no pressure — I just wanted to make sure you had the full picture."],
+        found_better_price: [`Thanks for letting us know, ${name}. I completely understand — there are quite a few cleaning companies out there and prices can vary.`, '', "We appreciate you giving Gleam Team Housecleaning a look. If things change down the road, just reach out. We'd be happy to hear from you."],
+        chose_another: [`Thanks for letting us know, ${name}, and thanks for giving Gleam Team Housecleaning a chance.`, '', "We completely understand. Choosing someone to come into your home is a personal decision, especially when it's someone you'll be trusting with your space.", '', "If you're comfortable sharing what made the difference for you, we'd genuinely appreciate the feedback. It helps us learn what matters most to the families we work with.", '', "And if you ever need us down the road, we're still here."],
+        no_longer_needed: [`Hi ${name}, thanks for letting me know!`, '', "No worries at all. If a cleaning need comes up later, just reach out and we'll be here.", '', "And if there's a particular reason you decided not to move forward that you're comfortable sharing, we'd always appreciate the feedback.", '', "Whenever you need us, we'd be glad to help."],
+        recurring_offer: [`Hi ${name}! Hope you've been doing well.`, '', "I wanted to check whether you'd like to get your next cleaning on the calendar. We can keep the same day as before, or change it around if your schedule has shifted.", '', 'Just let me know what works best for you.'],
+        payment_reminder: [`Hi ${name}! Just following up on the cleaning from earlier.`, '', 'It looks like we still have the payment showing as outstanding on our end. Whenever you get a chance, please send over the payment or confirmation.', '', "If something came up or there's an issue on your end, just let me know."],
+        post_cleaning_thanks: [`Hi ${name}! The crew has wrapped up and your home is all set.`, '', 'We hope you walk in and feel like everything is just the way you wanted it.', '', "And if there's anything you'd like us to know — whether something stood out in a good way or there's something we could have done better — please tell us. We really do appreciate the feedback."],
+        booking_confirmation: [`Hi ${name}! You're all set for your upcoming cleaning.`, '', "We'll send you a reminder the day before. If anything comes up before then or you need to make a change, just let us know.", '', "Here's what we have:", `📍 ${addressDisplay}`, '⏰ [DATE AND TIME]', `💲 ${priceDisplay}`, `🧽 ${serviceLabel}`, '', 'We accept Zelle or Venmo. Payment is due at the end of the service, whichever is easier for you.', '', 'Payment details:', '✔️ Venmo: https://venmo.com/u/hiltonmoura', '✔️ Zelle: 650 2801111 (numbers only) — the name should appear as HILTON SEIXAS MOURA.', '', 'If you need to reschedule or cancel outside office hours (8:30 AM – 4:30 PM), you can text (650) 280-1111 directly.', '', 'See you soon!'],
+        payment_info: ['Of course! Here are the payment details separately:', '', '✔️ Venmo: https://venmo.com/u/hiltonmoura', '✔️ Zelle: 650 2801111 (numbers only) — the name should appear as HILTON SEIXAS MOURA.']
+      };
+      for (const group of groups) for (const item of group.items) if (replacements[item.id]) item.message = signedGleam(replacements[item.id]);
+      const jobOffer = groups.flatMap((group) => group.items).find((item) => item.id === 'cleaner_job_offer');
+      if (jobOffer) jobOffer.message = [`Oi [NOME DO CLEANER]! Surgiu um job:`, '', `Cliente: ${lead?.customerName || 'XXXXX'}`, homeSummary, `Serviço: ${serviceLabel}`, `Valor: ${priceDisplay}`, `Líquido após 30%: $${netCleanerAmount}`, `Endereço: ${addressDisplay}`, 'Data/horário sugerido: [DATA/HORÁRIO]', '', 'Consegue cobrir?'].join('\n');
+      groups[0].items.push(...[
+        { id: 'gleam_home_details', label: 'Request home details', message: signedGleam([`Hi ${name}! Thanks for reaching out to Gleam Team Housecleaning.`, '', "Before I put a quote together, I just need a few details about the home so we're not giving you a number based on guesswork: approximately how many square feet, how many bedrooms and bathrooms, and what type of cleaning you're looking for.", '', "If it's easier, you can also send a few pictures or a short walkthrough video. Sometimes that's the easiest way for us to get a good feel for the home."]) },
+        { id: 'gleam_carpet_upholstery', label: 'Carpet, rug or sofa', message: signedGleam(["Just one thing I want to clarify before we move forward: we do vacuum carpets, but we don't offer carpet shampooing or deep extraction.", '', "The same goes for upholstery and area rugs — those services aren't something our team currently provides.", '', 'I just wanted to mention it upfront so there are no surprises later. Let me know if that changes anything for you.']) },
+        { id: 'gleam_pending_details', label: 'Photos or information pending', message: signedGleam([`Hi ${name}! Just wanted to check if you're still interested in getting a cleaning quote from us.`, '', "We're happy to put one together. We just need the few details we asked for, or a couple of pictures/short video of the home, so we can get a better idea of the work involved.", '', "Whenever you're ready, send them over and we'll take it from there."]) },
+        { id: 'gleam_review_request', label: 'Review request', message: signedGleam([`Hi ${name}! If you were happy with the cleaning, we'd really appreciate a review when you have a moment.`, '', "We're a small family business, and honest reviews make a big difference for us when new families are deciding who to trust with their home.", '', 'Link: [insert review link]', '', 'Thank you again for choosing us!']) },
+        { id: 'gleam_cancellation', label: 'Appointment cancelled', message: signedGleam(['APPOINTMENT CANCELLED', '', `👥 ${lead?.customerName || '[CLIENT]'}`, `🧼 ${serviceLabel}`, `📍 ${addressDisplay}`, '📅 [DATE]', '', 'Cancelled per your request. Reason noted: [REASON].', '', "Whenever you're ready to get back on the schedule, just reach out."]) },
+        { id: 'gleam_nextdoor', label: 'Nextdoor comment', message: signedGleam([`Hi ${name}! If you're still looking around for a cleaning service, we'd love for you to keep Gleam Team Housecleaning in mind.`, '', "We're a small family business and work with families, pets and busy households every week. We handle deep cleanings, move-in/move-out, recurring cleanings, post-construction and more.", '', 'Estimates are always free. You can reach us at (925) 515-5461.']) },
+        { id: 'gleam_scope', label: 'Detail-oriented client: scope', message: signedGleam(["A few things I like to mention upfront, just so we're all on the same page before the cleaning:", '', "• We don't wash or fold laundry", "• Dishes aren't part of a standard cleaning", "• Organizing closets, drawers or general clutter isn't included", "• Anything outside the checklist we've shared isn't automatically included", '', "When the crew arrives, they'll do a quick walkthrough to make sure the home matches what we discussed.", '', "If anything looks different from the original scope, we'll talk with you about it before starting rather than surprising you afterward."]) },
+        { id: 'gleam_move_difference', label: 'Move-in vs. Move-out', message: signedGleam(["The cleaning itself is essentially the same. What usually changes is the condition of the home.", '', "With a move-out, there's often more buildup from the time the property was occupied. With a move-in, the home has usually already gone through a move-out cleaning before the new keys are handed over, so it tends to be in better shape and takes less time."]) }
+      ]);
+    }
+    return groups;
   }
 
   function quickReplyMessage(id, company, lead, quote, options) {

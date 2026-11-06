@@ -54,6 +54,16 @@ quote = engine.calculateQuote({ companyName: 'Gleam Team Housecleaning', bedroom
 check(quote.service === 'move_in' && quote.amount === 365 && !quote.discount, 'Gleam Move-In must use its regular price when no discount is selected');
 quote = engine.calculateQuote({ companyName: 'Gleam Team Housecleaning', bedrooms: 3, bathrooms: 2, serviceType: 'Move-Out Cleaning' });
 check(quote.service === 'move_out' && quote.amount === 410 && !quote.discount, 'Gleam Move-Out must remain separate without a selected discount');
+const gleamSmall = engine.calculateQuote({ companyName: 'Gleam Team Housecleaning', squareFeet: 1000, serviceType: 'Deep Cleaning' });
+check(gleamSmall.priceRange.minimum === 195 && gleamSmall.priceRange.maximum === 195 && !gleamSmall.discount, 'Gleam homes up to 1000 sq ft use the fixed table price without an automatic discount');
+const gleamSmallDiscount = engine.calculateQuote({ companyName: 'Gleam Team Housecleaning', squareFeet: 1000, serviceType: 'Deep Cleaning' }, { discountPercent: 15 });
+check(gleamSmallDiscount.priceRange.minimum === gleamSmallDiscount.priceRange.maximum && gleamSmallDiscount.discount.percentage === 15, 'A manually entered discount applies to the Gleam fixed price');
+const gleamUnknownSize = engine.calculateQuote({ companyName: 'Gleam Team Housecleaning', bedrooms: 2, bathrooms: 1, serviceType: 'Deep Cleaning' });
+check(gleamUnknownSize.priceRange.maximum > gleamUnknownSize.priceRange.minimum, 'Unknown square footage must not be assumed to be within the fixed-price threshold');
+const gleamFixedMessage = messages.approvedMessage({ lead: { customerName: 'Alex' }, quote: gleamSmall });
+check(gleamFixedMessage.includes('$195') && !gleamFixedMessage.includes('$195–$195') && !gleamFixedMessage.includes('Non-toxic'), 'Gleam fixed prices show one value and do not promise non-toxic products without a request');
+const gleamPayment = messages.quickReplyMessage('payment_info', 'gleam', { customerName: 'Alex' }, gleamSmall);
+check(gleamPayment.includes('https://venmo.com/u/hiltonmoura') && gleamPayment.includes('HILTON SEIXAS MOURA'), 'Gleam payment details follow the new script');
 quote = engine.calculateQuote({ companyName: "Mary's House Cleaning", bedrooms: 3, bathrooms: 2, serviceType: 'Deep Cleaning' }, { discountPercent: 10, discountTarget: 'deep_cleaning' });
 check(quote.amount === 295 && quote.discount?.percentage === 10, 'A selected discount must apply to the matching primary cleaning type and round up to $5');
 check(quote.priceRange.maximum === 385, 'The discount must apply to both ends of the original price range');
@@ -331,7 +341,7 @@ for (const company of Object.keys(engine.COMPANIES)) {
   const groups = messages.quickReplies(company, lead, sampleQuote);
   check(groups.length === 3 && groups.every((g) => g.items.length > 0), `${company}: quickReplies must return all 3 categories`);
   const cleanerOffer = messages.quickReplyMessage('cleaner_job_offer', company, lead, sampleQuote);
-  check(cleanerOffer.includes('cliente David') && cleanerOffer.includes('3bed 2bath 1600sqft') && cleanerOffer.includes('Pleasanton'), `${company}: cleaner_job_offer must interpolate lead and quote details`);
+  check(/cliente:?\s+David/i.test(cleanerOffer) && cleanerOffer.includes('3bed 2bath 1600sqft') && cleanerOffer.includes('Pleasanton'), `${company}: cleaner_job_offer must interpolate lead and quote details`);
   const bookingMsg = messages.quickReplyMessage('booking_confirmation', company, lead, sampleQuote);
   check(/Hi David[!,]/.test(bookingMsg) && bookingMsg.includes('Pleasanton'), `${company}: booking_confirmation must include customer name and address`);
 }

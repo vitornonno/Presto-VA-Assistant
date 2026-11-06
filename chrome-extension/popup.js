@@ -104,7 +104,10 @@ async function loadLastPrestoScan() {
 function result(review) {
   const quote = review.quote || {};
   if (quote.quoteType === 'time_only' && quote.estimatedHours) return `${quote.estimatedHours.minimum}–${quote.estimatedHours.maximum} hours`;
-  if (quote.quoteType === 'fixed_price' && Number.isFinite(quote.amount)) return `$${quote.priceRange?.minimum ?? quote.amount}–$${quote.priceRange?.maximum ?? quote.amount}`;
+  if (quote.quoteType === 'fixed_price' && Number.isFinite(quote.amount)) {
+    const minimum = quote.priceRange?.minimum ?? quote.amount; const maximum = quote.priceRange?.maximum ?? quote.amount;
+    return minimum === maximum ? `$${minimum}` : `$${minimum}–$${maximum}`;
+  }
   return 'Manual review required';
 }
 function card(review) {
@@ -356,7 +359,8 @@ function manualQuoteDescription(quote) {
   if (quote.status === 'ready_for_review' && quote.estimatedHours) return `${quote.estimatedHours.minimum}–${quote.estimatedHours.maximum} hours · KACS hourly estimate`;
   if (quote.status === 'ready_for_review') {
     const duration = manualDuration(quote);
-    return `$${quote.priceRange.minimum}–$${quote.priceRange.maximum} · preliminary estimate\nEstimated cleaning time: ${duration > 0 ? `${duration / 60} hours` : 'unavailable'} (used for availability)`;
+    const price = quote.priceRange.minimum === quote.priceRange.maximum ? `$${quote.priceRange.minimum}` : `$${quote.priceRange.minimum}–$${quote.priceRange.maximum}`;
+    return `${price} · preliminary estimate\nEstimated cleaning time: ${duration > 0 ? `${duration / 60} hours` : 'unavailable'} (used for availability)`;
   }
   if (quote.status === 'missing_size') return 'Size details needed — a request-for-details message can still be copied.';
   return quote.reason || 'Complete the details needed for this quote.';

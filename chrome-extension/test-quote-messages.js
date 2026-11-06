@@ -566,6 +566,7 @@ function extractSubstantiveSentences(rawText) {
       const words = s.split(' ').filter((w) => w.length > 1);
       if (words.length < 6 || s.length < 25) return false;
       if (COMMON_BOILERPLATE_SENTENCES.has(s)) return false;
+      if (/^thanks for letting us know [a-z]+$/.test(s)) return false;
       return true;
     });
 }

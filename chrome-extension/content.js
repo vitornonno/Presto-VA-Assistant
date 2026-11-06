@@ -2,7 +2,7 @@
 (function contentModule() {
   'use strict';
 
-  const BUILD_VERSION = chrome.runtime?.getManifest?.()?.version || '1.0.0';
+  const BUILD_VERSION = chrome.runtime?.getManifest?.()?.version || '1.0.2';
   const VA_STORAGE_KEY = 'selectedVaName';
   const LAST_COMPANY_KEY = 'lastQuickReplyCompany';
   let selectedVaName = '';
@@ -416,7 +416,7 @@
       const maximum = result.priceRange?.maximum ?? result.amount;
       const duration = quoteDurationMinutes();
       const durationText = Number.isFinite(duration) && duration > 0 ? `${formatHours(duration / 60)} hours` : 'unavailable';
-      return `<strong>$${minimum}–$${maximum}</strong><small>Estimated cleaning time: ${durationText} (used for availability).</small><small>Preliminary price range. Review required.</small>`;
+      return `<strong>${minimum === maximum ? `$${minimum}` : `$${minimum}–$${maximum}`}</strong><small>Estimated cleaning time: ${durationText} (used for availability).</small><small>Preliminary estimate. Review required.</small>`;
     }
     if (result.status === 'missing_size') return '<strong>Details needed</strong><small>Ask the client for the number of bedrooms and bathrooms before estimating.</small>';
     return `<strong>Manual review required</strong><small>${result.reason || 'Complete the missing lead details.'}</small>`;
