@@ -86,7 +86,7 @@ Quando os valores do estado Apollo divergirem das respostas atuais visíveis no 
 - O campo opcional **Discount %** aceita de 0 a 100 e aplica o percentual ao tipo selecionado em **Cleaning type**; vazio não menciona desconto. Nas cotações de preço fixo, ambos os limites da faixa são descontados e arredondados para cima em incrementos de US$5.
 - Para um pedido recorrente de First Cleaning, o desconto informado vale para a primeira limpeza regular após a inicial; a mensagem informa o preço normal das visitas seguintes. Frequências quinzenal e mensal usam o preço da tabela mais uma faixa de US$30. Para semanal, o preço é confirmado após a primeira limpeza, sem inventar valor.
 - KACS usa cobrança por hora e não aplica desconto ao serviço inicial; o campo permanece disponível.
-- O painel e o formulário manual mostram abaixo do preço a estimativa de tempo usada na busca de disponibilidade. Nas empresas de preço fixo, essa duração usa a estimativa operacional derivada do valor cotado a US$100/hora, com tolerância de 1,5h; não é uma duração confirmada pela equipe.
+- O painel e o formulário manual mostram abaixo do preço a estimativa de tempo usada na busca de disponibilidade. Nas empresas de preço fixo, essa duração usa a estimativa operacional derivada do valor cotado a US$100/hora, com intervalo de 1h (acompanhando a faixa de US$100); não é uma duração confirmada pela equipe.
 
 ## Limitações de serviço nas mensagens de cotação
 

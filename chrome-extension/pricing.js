@@ -285,7 +285,7 @@
       quoteType: 'fixed_price',
         amount,
       baseHours,
-      estimatedHours: { minimum: baseHours, maximum: baseHours + 1.5 },
+      estimatedHours: { minimum: baseHours, maximum: baseHours + 1 },
       includeEstimatedTime: Boolean(options.includeEstimatedTime),
       discount: discountApplies ? { percentage: configuredDiscount, amount: baseAmount - amount } : null,
       priceRange,

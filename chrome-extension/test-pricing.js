@@ -331,7 +331,7 @@ for (const companyName of configuredCompanies.filter((name) => name !== 'KACS Cl
   const msgWithoutTime = messages.approvedMessage({ lead, quote: withoutTime });
   const msgWithTime = messages.approvedMessage({ lead, quote: withTime });
   check(!/⏱️\s*Estimated time/i.test(msgWithoutTime), `${companyName}: estimated time must be omitted when includeEstimatedTime is false`);
-  check(/⏱️\s*Estimated time/i.test(msgWithTime) && msgWithTime.includes('3.5') && msgWithTime.includes('5'), `${companyName}: estimated time must be included when includeEstimatedTime is true`);
+  check(/⏱️\s*Estimated time/i.test(msgWithTime) && msgWithTime.includes('3.5') && msgWithTime.includes('4.5'), `${companyName}: estimated time must be included when includeEstimatedTime is true`);
   check(msgWithoutTime.includes('🏠 Home: 3 Bedrooms / 2 Bathrooms') && msgWithoutTime.includes('🧽 Additional Services Requested: Oven cleaning'), `${companyName}: quote message must include homeDetails`);
 }
 
@@ -375,7 +375,7 @@ for (const replyId of customerQuickReplyIds) {
 
 // Stage 3 checks: Milestone 1 - $100/hr time estimation formula, Da Silva reference case, and edge cases
 
-// a) Da Silva reference case ($495 - $595 producing 5.0h to 6.5h max, approved message checks)
+// a) Da Silva reference case ($495 - $595 producing 5.0h to 6.0h, approved message checks)
 {
   const daSilvaLead = {
     companyName: 'Da Silva Cleaning Services',
@@ -394,12 +394,12 @@ for (const replyId of customerQuickReplyIds) {
   // $100/hr rate verification: 495 / 100 = 4.95 -> roundToNearestHalfHour(4.95) = 5.0h
   check(daSilvaWithTime.baseHours === 5, 'Da Silva 4b/3b Deep Cleaning baseHours must be 5.0h derived from $100/hr rate');
   check(daSilvaWithTime.estimatedHours.minimum === 5, 'Da Silva 4b/3b Deep Cleaning estimatedHours.minimum must be 5.0h');
-  check(daSilvaWithTime.estimatedHours.maximum === 6.5, 'Da Silva 4b/3b Deep Cleaning estimatedHours.maximum must be 6.5h');
+  check(daSilvaWithTime.estimatedHours.maximum === 6, 'Da Silva 4b/3b Deep Cleaning estimatedHours.maximum must be 6.0h');
 
   // Message verification with includeEstimatedTime = true
   const msgWithTime = messages.approvedMessage({ lead: daSilvaLead, quote: daSilvaWithTime });
   check(/⏱️\s*Estimated time/i.test(msgWithTime), 'Da Silva message must include estimated time section when includeEstimatedTime is true');
-  check(msgWithTime.includes('Approximately 5–6.5 hours with a team of 2 cleaners'), 'Da Silva message must include "Approximately 5–6.5 hours with a team of 2 cleaners"');
+  check(msgWithTime.includes('Approximately 5–6 hours with a team of 2 cleaners'), 'Da Silva message must include "Approximately 5–6 hours with a team of 2 cleaners"');
   check(!msgWithTime.includes('6.5-8') && !msgWithTime.includes('6.5–8') && !msgWithTime.includes('6.5 to 8'), 'Da Silva message must not contain obsolete 6.5-8 hours');
   check(msgWithTime.includes('💰 Estimated Price: $495–$595'), 'Da Silva message must display price $495–$595');
   check(msgWithTime.includes('Naisha'), 'Da Silva message must address customer Naisha');
@@ -407,31 +407,39 @@ for (const replyId of customerQuickReplyIds) {
   // Message verification with includeEstimatedTime = false
   const msgWithoutTime = messages.approvedMessage({ lead: daSilvaLead, quote: daSilvaWithoutTime });
   check(!/⏱️\s*Estimated time/i.test(msgWithoutTime), 'Da Silva message must omit estimated time when includeEstimatedTime is false');
+
+  // $225 to $325 reference case (1,200 sq ft Deep Cleaning -> 2.5 to 3.5 hours)
+  const jheys225Quote = engine.calculateQuote({ companyName: "Jhey's Cleaning", bedrooms: 2, bathrooms: 2, serviceType: 'Deep Cleaning' }, { includeEstimatedTime: true });
+  check(jheys225Quote.priceRange.minimum === 225 && jheys225Quote.priceRange.maximum === 325, "Jhey's 2b/2b Deep Cleaning must be $225 to $325");
+  check(jheys225Quote.estimatedHours.minimum === 2.5 && jheys225Quote.estimatedHours.maximum === 3.5, "Jhey's $225 to $325 must produce 2.5 to 3.5 hours");
+  const jheys225Msg = messages.approvedMessage({ lead: { customerName: 'Alex', bedrooms: 2, bathrooms: 2 }, quote: jheys225Quote });
+  check(jheys225Msg.includes('💲 Estimated investment: $225 to $325') && jheys225Msg.includes('⏱️ Estimated time: 2.5 to 3.5 hours'), "Jhey's $225 to $325 message must show 2.5 to 3.5 hours");
 }
 
 // b) Generic $100/hr verification across all fixed-price companies
 {
   const fixedCompanyKeys = ['jheys', 'dasilva', 'utcleans', 'marys', 'gleam', 'express'];
 
-  // Test across fixed companies for reference 4b/3b lead ($495 -> 5.0h - 6.5h)
+  // Test across fixed companies for reference 4b/3b lead ($495 -> 5.0h - 6.0h)
   for (const companyKey of fixedCompanyKeys) {
     const companyName = engine.COMPANIES[companyKey].name;
     const lead = { companyName, customerName: 'David', bedrooms: 4, bathrooms: 3, serviceType: 'Deep Cleaning' };
     const quote = engine.calculateQuote(lead, { includeEstimatedTime: true });
     check(quote.amount === 495, `${companyName}: amount for 4b/3b deep cleaning must be 495`);
     check(quote.baseHours === 5, `${companyName}: baseHours must be 5.0h for $495 quote`);
-    check(quote.estimatedHours.minimum === 5 && quote.estimatedHours.maximum === 6.5, `${companyName}: estimatedHours must be 5.0h - 6.5h`);
+    check(quote.estimatedHours.minimum === 5 && quote.estimatedHours.maximum === 6, `${companyName}: estimatedHours must be 5.0h - 6.0h`);
     const rendered = messages.approvedMessage({ lead, quote });
-    check(/⏱️\s*Estimated time/i.test(rendered) && rendered.includes('5') && rendered.includes('6.5'), `${companyName}: rendered message must contain 5 and 6.5`);
+    check(/⏱️\s*Estimated time/i.test(rendered) && rendered.includes('5') && rendered.includes('6'), `${companyName}: rendered message must contain 5 and 6`);
   }
 
   // Multi-band generic verification: verify baseHours === roundToNearestHalfHour(amount / 100) across bands and services
   const testBandsAndServices = [
-    { bedrooms: 1, bathrooms: 1, serviceType: 'Deep Cleaning' },      // 800 sq ft, amount: 165 -> 1.5h min, 3.0h max
-    { bedrooms: 2, bathrooms: 1, serviceType: 'First Cleaning' },     // 1000 sq ft, amount: 165 -> 1.5h min, 3.0h max
-    { bedrooms: 3, bathrooms: 2, serviceType: 'Deep Cleaning' },      // 1600 sq ft, amount: 325 -> 3.5h min, 5.0h max
-    { bedrooms: 4, bathrooms: 2.5, serviceType: 'Move-in Cleaning' }, // 2000 sq ft, amount: 460 -> 4.5h min, 6.0h max
-    { bedrooms: 4, bathrooms: 4, serviceType: 'Move-out Cleaning' }   // 3000 sq ft, amount: 790 -> 8.0h min, 9.5h max
+    { bedrooms: 1, bathrooms: 1, serviceType: 'Deep Cleaning' },      // 800 sq ft, amount: 165 -> 1.5h min, 2.5h max
+    { bedrooms: 2, bathrooms: 1, serviceType: 'First Cleaning' },     // 1000 sq ft, amount: 165 -> 1.5h min, 2.5h max
+    { bedrooms: 2, bathrooms: 2, serviceType: 'Deep Cleaning' },      // 1200 sq ft, amount: 225 -> 2.5h min, 3.5h max
+    { bedrooms: 3, bathrooms: 2, serviceType: 'Deep Cleaning' },      // 1600 sq ft, amount: 325 -> 3.5h min, 4.5h max
+    { bedrooms: 4, bathrooms: 2.5, serviceType: 'Move-in Cleaning' }, // 2000 sq ft, amount: 460 -> 4.5h min, 5.5h max
+    { bedrooms: 4, bathrooms: 4, serviceType: 'Move-out Cleaning' }   // 3000 sq ft, amount: 790 -> 8.0h min, 9.0h max
   ];
 
   for (const companyKey of fixedCompanyKeys) {
@@ -441,22 +449,22 @@ for (const replyId of customerQuickReplyIds) {
       const expectedBaseHours = engine.roundToNearestHalfHour(q.amount / 100);
       check(q.baseHours === expectedBaseHours, `${companyName} (${testCase.serviceType}): baseHours ${q.baseHours} must match expected ${expectedBaseHours} for amount $${q.amount}`);
       check(q.estimatedHours.minimum === expectedBaseHours, `${companyName}: minimum estimatedHours must equal baseHours`);
-      check(q.estimatedHours.maximum === expectedBaseHours + 1.5, `${companyName}: maximum estimatedHours must equal baseHours + 1.5`);
+      check(q.estimatedHours.maximum === expectedBaseHours + 1, `${companyName}: maximum estimatedHours must equal baseHours + 1`);
     }
   }
 }
 
 // c) Edge cases
 {
-  // 1. Single price Gleam <= 1000 sq ft -> 2.0h - 3.5h
+  // 1. Single price Gleam <= 1000 sq ft -> 2.0h - 3.0h
   const gleamSmallLead = { companyName: 'Gleam Team Housecleaning', squareFeet: 1000, serviceType: 'Deep Cleaning' };
   const gleamSmallQuote = engine.calculateQuote(gleamSmallLead, { includeEstimatedTime: true });
   check(gleamSmallQuote.priceRange.minimum === 195 && gleamSmallQuote.priceRange.maximum === 195, 'Gleam <= 1000 sq ft must have single price $195');
   check(gleamSmallQuote.amount === 195, 'Gleam <= 1000 sq ft amount must be 195');
   check(gleamSmallQuote.baseHours === 2, 'Gleam <= 1000 sq ft baseHours must be 2.0h (195 / 100 = 1.95 rounded to nearest 0.5h)');
-  check(gleamSmallQuote.estimatedHours.minimum === 2 && gleamSmallQuote.estimatedHours.maximum === 3.5, 'Gleam <= 1000 sq ft estimatedHours must be 2.0h to 3.5h');
+  check(gleamSmallQuote.estimatedHours.minimum === 2 && gleamSmallQuote.estimatedHours.maximum === 3, 'Gleam <= 1000 sq ft estimatedHours must be 2.0h to 3.0h');
   const gleamSmallMsg = messages.approvedMessage({ lead: { ...gleamSmallLead, customerName: 'Sam' }, quote: gleamSmallQuote });
-  check(gleamSmallMsg.includes('⏱️ Estimated time: 2–3.5 hours'), 'Gleam small message must contain "⏱️ Estimated time: 2–3.5 hours"');
+  check(gleamSmallMsg.includes('⏱️ Estimated time: 2–3 hours'), 'Gleam small message must contain "⏱️ Estimated time: 2–3 hours"');
   check(gleamSmallMsg.includes('$195') && !gleamSmallMsg.includes('$195–$195'), 'Gleam small message must format single price as $195');
 
   // 2. 100% discount ($0 quote) safety
@@ -473,7 +481,7 @@ for (const replyId of customerQuickReplyIds) {
   check(discountedQuote.amount === 260, '20% discount on $325 must yield amount $260');
   const expectedDiscountedHours = engine.roundToNearestHalfHour(260 / 100); // 2.6 -> 2.5
   check(discountedQuote.baseHours === expectedDiscountedHours, `Discounted baseHours must match rate on quoted amount: ${expectedDiscountedHours}h`);
-  check(discountedQuote.estimatedHours.minimum === expectedDiscountedHours && discountedQuote.estimatedHours.maximum === expectedDiscountedHours + 1.5, 'Discounted quote estimatedHours range must be expectedBaseHours to expectedBaseHours + 1.5');
+  check(discountedQuote.estimatedHours.minimum === expectedDiscountedHours && discountedQuote.estimatedHours.maximum === expectedDiscountedHours + 1, 'Discounted quote estimatedHours range must be expectedBaseHours to expectedBaseHours + 1');
 
   // 4. Over-limit homes (> 3,000 sq ft) for fixed-price companies: status manual_quote_required, no estimatedHours crash
   const overLimitQuote = engine.calculateQuote({ companyName: 'Da Silva Cleaning Services', squareFeet: 3500, serviceType: 'Deep Cleaning' }, { includeEstimatedTime: true });
