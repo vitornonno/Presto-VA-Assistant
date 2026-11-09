@@ -1,4 +1,6 @@
-# Integração Quo — follow-ups
+# Quo — follow-ups e histórico da proposta de API
+
+**Decisão atual:** não seguir com a integração pela API do Quo. A extensão funciona pela leitura da página aberta e os follow-ups são copiados para envio manual pelo VA. O texto abaixo registra a proposta anterior e não descreve uma integração ativa.
 
 ## Objetivo
 

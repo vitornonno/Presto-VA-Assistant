@@ -269,14 +269,14 @@
 
     if (size.status === 'over_limit') return { ...base, status: 'manual_quote_required', reason: 'Homes above 3,000 sq. ft. require a human quote.' };
       const baseAmount = BEGINNER_PRICES[size.band][SERVICE_INDEX.indexOf(service)];
-      const rawBaseHours = KACS_HOURS[size.band][SERVICE_INDEX.indexOf(service)];
-      const baseHours = roundToNearestHalfHour(rawBaseHours);
       const discountApplies = configuredDiscount !== null && configuredDiscount > 0 && effectiveDiscountTarget === service && !firstRecurringDiscountPercent;
       // A known square footage is required to establish the <= 1,000 sq. ft. rule.
       const gleamFixed = company === 'gleam' && size.source === 'square_feet' && size.squareFeet <= 1000;
       const standardPriceRange = { minimum: baseAmount, maximum: gleamFixed ? baseAmount : baseAmount + 100 };
       const priceRange = discountApplies ? discountedRange(standardPriceRange, configuredDiscount) : standardPriceRange;
       const amount = priceRange.minimum;
+      const hoursBasis = amount > 0 ? amount : baseAmount;
+      const baseHours = roundToNearestHalfHour(hoursBasis / 100);
       const recurringCleaning = quotedRecurringFrequency
         ? recurringCleaningQuote(recurringFrequency, size.band, effectiveDiscountTarget === 'regular' ? configuredDiscount : null, firstRecurringDiscountPercent)
         : recurringFrequency ? { ...recurringFrequency, firstRecurringDiscount: firstRecurringDiscountPercent > 0 ? { percentage: firstRecurringDiscountPercent } : null } : null;

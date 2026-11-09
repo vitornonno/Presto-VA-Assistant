@@ -6,7 +6,7 @@ Extensão Chrome local para apoiar o atendimento de novas leads de empresas de l
 
 - A extensão **nunca envia** mensagens, altera leads ou agenda serviços. Ela lê o Presto somente quando o atendente aciona a leitura de agenda.
 - Ao confirmar uma cotação, o atendente recebe a mensagem imediatamente na área de transferência e a cola manualmente no Yelp.
-- A leitura automática de leads continua limitada ao Yelp. Thumbtack, Quo/OpenPhone e qualquer outro site podem usar o modo **Manual quote**: o atendente insere os detalhes da lead, endereço/localidade e empresa para gerar a mesma mensagem e consultar disponibilidade da agenda Presto. A extensão não lê nem envia mensagens nesses sites.
+- No Yelp, a extensão tenta extrair os dados da lead ativa. No Quo/OpenPhone, ela lê dados da página para personalizar mensagens; o VA deve conferir o cliente e a empresa. O popup também oferece **Manual quote** para inserir dados em outros canais. O envio das mensagens é sempre manual.
 - Toda proposta exige revisão humana antes de ser usada.
 
 ## Empresas e origem das regras
@@ -18,7 +18,7 @@ Extensão Chrome local para apoiar o atendimento de novas leads de empresas de l
 | Da Silva Cleaning Services | Mesma faixa e tabela da Jhey's; mensagens e telefone próprios | `docs/DaSilva Cleaning.txt` |
 | UT Cleans | Mesma tabela base da Jhey's; mensagens e telefone próprios | `docs/Cópia de UT Cleans - Follow Up.docx` |
 | Mary's House Cleaning | Mesma tabela base da Jhey's; mensagens e telefone próprios | `docs/MARY'S HOUSE CLEANING.docx` |
-| Gleam Team Housecleaning | Mesma tabela base da Jhey's; mensagens e telefone próprios | `docs/Gleam Team Housecleaning.txt` |
+| Gleam Team Housecleaning | Tabela base da Jhey's; preço fixo até 1.000 sq. ft. quando a metragem é informada; mensagens e telefone próprios | `bases/gleam team va.docx` (fonte operacional local) |
 | Express House Cleaning | Mesma faixa e tabela da Jhey's; mensagens e telefone próprios | `docs/Express House Cleaning.txt` |
 
 Os nomes `Jhey's` e `Jhey’s` são equivalentes. A identificação no fallback visual do Yelp lê o nome mostrado na página e também reconhece as contas atualmente conhecidas:
@@ -27,7 +27,7 @@ Os nomes `Jhey's` e `Jhey’s` são equivalentes. A identificação no fallback 
 - Jhey’s: `BnI3aSQTdRlX1YGUuPfAiA`
 - Da Silva: `NKYK8RrTUSDhdbaI848bjg`
 
-Empresa ausente ou desconhecida exige escolha humana no campo **Company pricing**. A extensão não infere a empresa pelo texto da conversa. O nome do cliente vem preferencialmente da lead ativa no estado Apollo; o fallback visual exige uma região de cliente identificável. Se não houver evidência confiável, o nome fica vazio.
+No Yelp, empresa ausente ou desconhecida exige escolha humana no campo **Company pricing**, e a extensão não a infere pelo texto da conversa. O nome do cliente vem preferencialmente da lead ativa no estado Apollo; o fallback visual exige uma região de cliente identificável. No Quo e em outros sites, quando não detecta a empresa, o painel pode usar a última empresa escolhida ou KACS como padrão; o VA deve confirmar a seleção.
 
 ## Dados necessários
 
@@ -72,12 +72,21 @@ Quando os valores do estado Apollo divergirem das respostas atuais visíveis no 
 - As mensagens seguem `docs/Base VA - Jhey's Cleaning.txt`. Não inventar duração estimada: a tabela disponível contém preços, não tempos.
 - As mensagens de primeira resposta da Jhey’s usam tom acolhedor e promocional para novos clientes, destacando cuidado personalizado e valor do serviço. A faixa exibida já incorpora o preço introdutório para novos clientes; não informar percentual ou preço anterior que não esteja definido. Não devem inventar vagas, duração ou promessas de resultado.
 
+## Gleam Team Housecleaning
+
+- A fonte atual dos scripts é `bases/gleam team va.docx`, mantida localmente. As cotações têm textos específicos para Deep, Move-in, Move-out, Post-Construction e First Cleaning, com dados da residência e preço calculados pela extensão.
+- Para metragem informada de até 1.000 sq. ft., o preço inicial é o valor fixo da tabela. Sem metragem informada, mesmo que quartos e banheiros apontem para uma faixa até 1.000 sq. ft., a extensão não presume que a casa esteja dentro do limite e mantém a faixa normal. Acima de 1.000 sq. ft., a faixa vai do valor da tabela até US$100 acima.
+- A base menciona desconto de 15% para Deep, First e Move-in, mas o usuário decidiu que **o desconto será informado manualmente**. Um campo vazio não aplica nem menciona desconto. A regra existente de desconto na primeira limpeza recorrente permanece para First Cleaning quando houver recorrência identificada.
+- Produtos non-toxic entram no texto quando solicitados. Em Move-in/Move-out, o modelo inclui interiores do forno e da geladeira; em Deep, essa linha entra quando forno ou geladeira forem solicitados.
+- O texto diz que o checklist será anexado; o VA precisa anexá-lo manualmente. As respostas rápidas incluem pagamento, confirmação, cancelamento, pedido de avaliação e orientações de escopo. Campos entre colchetes devem ser preenchidos pelo VA antes do envio.
+- Na versão 1.0.3, os modelos específicos foram publicados no atualizador. A presença do tempo estimado na mensagem continua sujeita à opção de duração da cotação.
+
 ## Desconto, recorrência e duração no painel
 
 - O campo opcional **Discount %** aceita de 0 a 100 e aplica o percentual ao tipo selecionado em **Cleaning type**; vazio não menciona desconto. Nas cotações de preço fixo, ambos os limites da faixa são descontados e arredondados para cima em incrementos de US$5.
 - Para um pedido recorrente de First Cleaning, o desconto informado vale para a primeira limpeza regular após a inicial; a mensagem informa o preço normal das visitas seguintes. Frequências quinzenal e mensal usam o preço da tabela mais uma faixa de US$30. Para semanal, o preço é confirmado após a primeira limpeza, sem inventar valor.
 - KACS usa cobrança por hora e não aplica desconto ao serviço inicial; o campo permanece disponível.
-- O painel e o formulário manual mostram abaixo do preço a estimativa de tempo usada na busca de disponibilidade. Nas empresas de preço fixo, essa duração é uma estimativa operacional derivada do teto da cotação, não uma duração confirmada pela equipe.
+- O painel e o formulário manual mostram abaixo do preço a estimativa de tempo usada na busca de disponibilidade. Nas empresas de preço fixo, essa duração usa a estimativa operacional derivada do valor cotado a US$100/hora, com tolerância de 1,5h; não é uma duração confirmada pela equipe.
 
 ## Limitações de serviço nas mensagens de cotação
 
@@ -121,6 +130,7 @@ Todos os dados operacionais ficam no perfil local do Chrome, em `chrome.storage.
 ## Disponibilidade futura via Presto
 
 - O popup permite importar uma escala de disponibilidade de cleaners em `.xlsx` para qualquer empresa. A planilha deve ter um ou mais blocos com `Cleaner` na primeira coluna e cabeçalhos de data em `DD/MM`; o leitor aceita `Dia todo`, `A partir das 12:30 PM`, um horário isolado e intervalos explícitos. Os registros ficam apenas no armazenamento local do Chrome até serem substituídos ou limpos.
+- Os testes do importador usam `chrome-extension/test-fixtures/cleaner-availability.xlsx`, com dados fictícios, e não dependem da quantidade de janelas na planilha operacional da KACS.
 - Ao abrir um card Presto, o leitor mantém a captura ativa até o mapa/coordenadas aparecerem ou o timeout expirar. Preço e cleaner podem renderizar antes do mapa e não devem encerrar a captura antecipadamente.
 - Para todas as empresas e fontes de agenda, a primeira janela de chegada possível é **8:30–9:00 AM**. Janelas calculadas ou importadas antes de 8:30 AM são normalizadas para 8:30 AM.
 - Para KACS, o cálculo combina essas janelas importadas com a agenda roteirizada do Rafael no Presto. Cada janela importada representa outra equipe e só é oferecida se comportar toda a duração estimada do serviço.

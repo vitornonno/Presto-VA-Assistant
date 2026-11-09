@@ -356,10 +356,12 @@ function manualPriceDuration(price, company) {
   return Math.round((company === 'kacs' ? CleaningQuoteEngine.roundToNearestHalfHour(hours) : Math.ceil(hours * 2) / 2) * 60);
 }
 function manualQuoteDescription(quote) {
-  if (quote.status === 'ready_for_review' && quote.estimatedHours) return `${quote.estimatedHours.minimum}–${quote.estimatedHours.maximum} hours · KACS hourly estimate`;
+  if (quote.status === 'ready_for_review' && quote.quoteType === 'time_only' && quote.estimatedHours) return `${quote.estimatedHours.minimum}–${quote.estimatedHours.maximum} hours · KACS hourly estimate`;
   if (quote.status === 'ready_for_review') {
     const duration = manualDuration(quote);
-    const price = quote.priceRange.minimum === quote.priceRange.maximum ? `$${quote.priceRange.minimum}` : `$${quote.priceRange.minimum}–$${quote.priceRange.maximum}`;
+    const minPrice = quote.priceRange?.minimum ?? quote.amount;
+    const maxPrice = quote.priceRange?.maximum ?? quote.amount;
+    const price = minPrice === maxPrice ? `$${minPrice}` : `$${minPrice}–$${maxPrice}`;
     return `${price} · preliminary estimate\nEstimated cleaning time: ${duration > 0 ? `${duration / 60} hours` : 'unavailable'} (used for availability)`;
   }
   if (quote.status === 'missing_size') return 'Size details needed — a request-for-details message can still be copied.';
