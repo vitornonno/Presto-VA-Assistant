@@ -43,10 +43,11 @@
     if (!recurring) return [];
     const cadence = recurring.label || 'Recurring';
     const cadenceTitle = /^regular$/i.test(cadence) ? 'REGULAR CLEANING' : `${cadence.toUpperCase()} REGULAR CLEANING`;
+    const initialVisit = quote.service === 'deep_cleaning' ? 'Deep Cleaning' : 'First Cleaning';
     const section = [
-      `🔄 AFTER THE FIRST CLEANING — ${cadenceTitle}`,
+      `🔄 AFTER THE ${initialVisit.toUpperCase()} — ${cadenceTitle}`,
       '',
-      `Once the First Cleaning has been completed, we can transition to a fixed recurring rate for ${cadence.toLowerCase()} service.`
+      `Once the ${initialVisit} has been completed, we can transition to a fixed recurring rate for ${cadence.toLowerCase()} service.`
     ];
     if (recurring.priceRange) {
       section.push('', `💲 ${cadence} Regular Cleaning: approximately $${recurring.priceRange.minimum} - $${recurring.priceRange.maximum} per visit`);
@@ -58,9 +59,9 @@
       const discount = recurring.firstRecurringDiscount;
       section.push('', `✨ ${discount.percentage}% new customer discount on your first ${cadence.toLowerCase()} regular cleaning: approximately $${discount.priceRange.minimum} - $${discount.priceRange.maximum} per visit. Future regular cleanings return to $${discount.standardPriceRange.minimum} - $${discount.standardPriceRange.maximum} per visit.`);
     } else if (recurring.firstRecurringDiscount?.percentage) {
-      section.push('', `✨ ${recurring.firstRecurringDiscount.percentage}% new customer discount on your first ${cadence.toLowerCase()} regular cleaning. Future regular cleanings return to the regular rate confirmed after the First Cleaning.`);
+      section.push('', `✨ ${recurring.firstRecurringDiscount.percentage}% new customer discount on your first ${cadence.toLowerCase()} regular cleaning. Future regular cleanings return to the regular rate confirmed after the ${initialVisit}.`);
     }
-    section.push('', 'The exact recurring rate will be confirmed after the First Cleaning.');
+    section.push('', `The exact recurring rate will be confirmed after the ${initialVisit}.`);
     return section;
   }
   function serviceLimitations(lead) {
@@ -602,7 +603,7 @@
     if (service === 'first_cleaning') {
       message.push('', "We'd be happy to help with your cleaning service. Since this would be your first cleaning with our company, we recommend starting with a First Cleaning. This initial visit allows us to become familiar with your home and establish a cleaning baseline before any future maintenance visits.");
     } else if (service === 'deep_cleaning') {
-      message.push('', "We'd be happy to help with your one-time Deep Cleaning service.");
+      message.push('', quote.recurringCleaning ? "We'd be happy to help with your Deep Cleaning service." : "We'd be happy to help with your one-time Deep Cleaning service.");
     }
     if (details.length) message.push('', 'Based on the information you provided:', '', ...details);
     message.push('', `🧼 ${quote.serviceLabel.toUpperCase()}`, '', ...hourlyEstimate(quote));

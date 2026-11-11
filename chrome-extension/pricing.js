@@ -106,8 +106,10 @@
   function recurringCleaningFrequency(serviceType, frequency) {
     const serviceText = String(serviceType || '').toLowerCase();
     const frequencyText = String(frequency || '').toLowerCase();
-    if (!/regular|standard|home cleaning|house cleaning|limpeza residencial|limpeza regular|limpeza padr[ãa]o/.test(serviceText) || /just once|one[- ]?time|single|uma vez|apenas uma vez|somente uma vez/.test(frequencyText)) return null;
-    if (/bi[ -]?weekly|every\s*(?:2|two)\s*weeks?|fortnightly|quinzenal(?:mente)?|a cada\s*(?:2|duas)\s*semanas/.test(frequencyText)) {
+    const regularRequest = /regular|standard|home cleaning|house cleaning|limpeza residencial|limpeza regular|limpeza padr[ãa]o/.test(serviceText);
+    const initialRequest = /first clean|initial clean|primeira limpeza|deep clean|limpeza profunda|faxina pesada/.test(serviceText);
+    if (!regularRequest && !initialRequest) return null;
+    if (/bi[ -]?weekly|every\s*(?:2|two)\s*weeks?|every\s+other\s+week|fortnightly|quinzenal(?:mente)?|a cada\s*(?:2|duas)\s*semanas/.test(frequencyText)) {
       return { id: 'biweekly', label: 'Bi-weekly' };
     }
     if (/monthly|(?:once|every)\s+(?:a\s+)?month|every\s*(?:4|four)\s*weeks?|mensal(?:mente)?|uma vez por m[êe]s/.test(frequencyText)) {
@@ -116,7 +118,8 @@
     if (/weekly|(?:once|every)\s+(?:a\s+)?week|semanal(?:mente)?|toda semana|uma vez por semana/.test(frequencyText)) {
       return { id: 'weekly', label: 'Weekly' };
     }
-    return { id: null, label: 'Recurring' };
+    if (/\b(?:just once|one[- ]?time|single|apenas uma vez|somente uma vez|uma vez)\b/i.test(frequencyText)) return null;
+    return regularRequest ? { id: null, label: 'Recurring' } : null;
   }
 
   function discountedRange(priceRange, percentage) {

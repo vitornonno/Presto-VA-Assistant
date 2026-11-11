@@ -119,6 +119,30 @@ quote = engine.calculateQuote({ companyName: "Jhey's Cleaning", bedrooms: 3, bat
 check(quote.service === 'first_cleaning' && quote.recurringCleaning?.label === 'Bi-weekly' && quote.recurringCleaning?.priceRange?.minimum === 170 && quote.recurringCleaning?.priceRange?.maximum === 200, 'Regular bi-weekly leads should retain the First Cleaning quote and add the table-based recurring range');
 quote = engine.calculateQuote({ companyName: "Jhey's Cleaning", bedrooms: 4, bathrooms: 3, serviceType: 'Regular home cleaning', frequency: 'Every 2 weeks' });
 check(quote.recurringCleaning?.label === 'Bi-weekly' && quote.recurringCleaning?.priceRange?.minimum === 260 && quote.recurringCleaning?.priceRange?.maximum === 290, 'Yelp Every 2 weeks must resolve to the bi-weekly table rate');
+for (const companyName of ['KACS Cleaning Services', "Jhey's Cleaning", 'Da Silva Cleaning Services', 'UT Cleans', "Mary's House Cleaning", 'Gleam Team', 'Express House Cleaning']) {
+  for (const [frequency, id] of [['Once a month', 'monthly'], ['Every 2 weeks', 'biweekly']]) {
+    for (const serviceType of ['Regular home cleaning', 'First Cleaning', 'Deep cleaning']) {
+      const lead = { companyName, customerName: 'Sample', bedrooms: 4, bathrooms: 3, serviceType, frequency };
+      const result = engine.calculateQuote(lead);
+      const range = result.recurringCleaning?.priceRange;
+      check(result.recurringCleaning?.id === id && Number.isFinite(range?.minimum) && range.maximum === range.minimum + 30, `${companyName}: ${serviceType} / ${frequency} must have a recurring price range`);
+      const message = messages.approvedMessage({ lead, quote: result });
+      check(message.includes(`$${range.minimum} - $${range.maximum}`), `${companyName}: ${frequency} recurring price must appear in the quote`);
+      if (serviceType === 'Deep cleaning') {
+        check(result.service === 'deep_cleaning' && message.includes('AFTER THE DEEP CLEANING'), `${companyName}: recurring service must follow the Deep Cleaning`);
+        if (companyName !== 'KACS Cleaning Services') {
+          const discounted = engine.calculateQuote(lead, { discountPercent: 20 });
+          check(discounted.discount?.percentage === 20 && !discounted.recurringCleaning?.firstRecurringDiscount, `${companyName}: Deep Cleaning discount must apply to the initial service`);
+        }
+      }
+    }
+  }
+}
+check(engine.recurringCleaningFrequency('Regular home cleaning', 'Uma vez por mês')?.id === 'monthly', 'Portuguese monthly frequency must not be treated as one-time');
+check(engine.recurringCleaningFrequency('Regular home cleaning', 'Every other week')?.id === 'biweekly', 'Every other week must be treated as bi-weekly');
+check(engine.recurringCleaningFrequency('Regular home cleaning', 'Just once') === null, 'One-time requests must not include recurring pricing');
+check(engine.recurringCleaningFrequency('First Cleaning', 'Not sure') === null, 'An unspecified First Cleaning frequency must not imply a recurring schedule');
+check(engine.recurringCleaningFrequency('Deep cleaning', 'Just once') === null, 'A one-time Deep Cleaning must not include recurring pricing');
 quote = engine.calculateQuote({ companyName: 'KACS', bedrooms: 3, bathrooms: 2, serviceType: 'Regular home cleaning', frequency: 'Weekly' });
 check(quote.recurringCleaning?.label === 'Weekly' && !quote.recurringCleaning?.priceRange, 'Weekly regular leads should defer the recurring rate until after the First Cleaning');
 const yelpSource = fs.readFileSync('../docs/codigo_fonte_KACS_yelpLeads.txt', 'utf8');

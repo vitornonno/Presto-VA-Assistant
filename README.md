@@ -6,9 +6,9 @@ Uma extensão local do Chrome para ajudar equipes de limpeza a revisar leads do 
 
 ## Downloads e instalação no Windows
 
-Na [release v1.0.6](https://github.com/vitornonno/Presto-VA-Assistant/releases/tag/v1.0.6), baixe os arquivos separados:
+Na [release v1.0.7](https://github.com/vitornonno/Presto-VA-Assistant/releases/tag/v1.0.7), baixe os arquivos separados:
 
-- **Presto-VA-Assistant-v1.0.6.zip**: extensão para o Chrome.
+- **Presto-VA-Assistant-v1.0.7.zip**: extensão para o Chrome.
 - **Presto-VA-Assistant-auto-updater-v0.1.38.zip**: auxiliar que permite verificar e instalar atualizações da extensão.
 
 Para uma instalação nova:

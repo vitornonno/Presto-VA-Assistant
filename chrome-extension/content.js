@@ -479,7 +479,9 @@
       const saved = String(review?.lead?.[field] || '').trim();
       return Boolean(current) && current !== saved;
     });
-    return descriptiveUpdate || sizeChanged;
+    const currentFrequency = CleaningQuoteEngine.recurringCleaningFrequency(originalServiceType || lead?.serviceType, lead?.frequency)?.id;
+    const savedFrequency = review?.quote?.recurringCleaning?.id;
+    return descriptiveUpdate || sizeChanged || Boolean(currentFrequency && currentFrequency !== savedFrequency);
   }
   function canRegenerateReview() { return Boolean(existingReview) && (existingReview.state === 'discarded' || reviewHasWrongCompany(existingReview) || reviewHasMoreCompleteDetails(existingReview)); }
   function blocksSaveForApproval() { return Boolean(existingReview) && !canRegenerateReview(); }
@@ -648,7 +650,8 @@
   }
   function applyManualServiceType(serviceId) {
     const selectedServiceType = CleaningQuoteEngine.SERVICES[serviceId] || null;
-    const isRecurringLead = Boolean(CleaningQuoteEngine.recurringCleaningFrequency(originalServiceType, lead.frequency));
+    const isRecurringLead = CleaningQuoteEngine.resolveService(originalServiceType, lead.frequency) === 'first_cleaning'
+      && Boolean(CleaningQuoteEngine.recurringCleaningFrequency(originalServiceType, lead.frequency));
     // The selector displays First Cleaning for recurring leads, but the
     // original Yelp wording carries the cadence needed for recurring rates.
     if (serviceId === 'first_cleaning' && isRecurringLead) lead.serviceType = originalServiceType;
@@ -685,16 +688,26 @@
     bindManualServiceControl();
   }
   function backfillPassiveLeadFields(sourceLead) {
-    if (!lead || !sourceLead || sourceLead.id !== lead.id) return;
-    for (const key of ['extraServices', 'cleaningProducts', 'phoneNumber', 'location', 'frequency']) {
+    if (!lead || !sourceLead || sourceLead.id !== lead.id) return false;
+    for (const key of ['extraServices', 'cleaningProducts', 'phoneNumber', 'location']) {
       if (!String(lead[key] || '').trim() && String(sourceLead[key] || '').trim()) {
         lead[key] = sourceLead[key];
       }
     }
+    const nextFrequency = String(sourceLead.frequency || '').trim();
+    const recognized = CleaningQuoteEngine.recurringCleaningFrequency(originalServiceType || lead.serviceType, nextFrequency)?.id;
+    if (recognized && nextFrequency !== lead.frequency) {
+      lead.frequency = nextFrequency;
+      return true;
+    }
+    return false;
   }
   function refreshCustomerNameForCopy() {
     const current = CleaningLeadExtractor.extractLead();
-    backfillPassiveLeadFields(current);
+    if (backfillPassiveLeadFields(current)) {
+      if (manualServiceOverride === 'first_cleaning') applyManualServiceType(manualServiceOverride);
+      quote = CleaningQuoteEngine.calculateQuote(lead, { companyOverride, discountPercent, includeEstimatedTime });
+    }
     const field = root.querySelector('[data-field="customerName"]');
     const entered = field?.value.trim();
     if (entered) lead.customerName = CleaningLeadExtractor.firstName(entered);
@@ -1010,6 +1023,7 @@
         return;
       }
       try {
+        refreshCustomerNameForCopy();
         const records = await chrome.storage.local.get(key);
         if (validReview(records[key]) && records[key].state !== 'discarded' && !reviewHasWrongCompany(records[key]) && !reviewHasMoreCompleteDetails(records[key])) {
           existingReview = records[key];
@@ -1017,7 +1031,6 @@
           render();
           return;
         }
-        refreshCustomerNameForCopy();
         const now = new Date().toISOString();
         const selectedSlots = selectedAvailabilitySlots() || [];
         const availabilitySearch = availability?.status === 'ready'
