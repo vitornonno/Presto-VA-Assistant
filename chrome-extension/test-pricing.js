@@ -252,7 +252,7 @@ const individualYelpLead = extractor.extractYelpLeadFromState(individualYelpStat
 check(individualYelpLead?.frequency === 'Just once', 'Yelp individual pages should read frequency from survey answers');
 check(engine.calculateQuote(individualYelpLead).service === 'first_cleaning', 'Yelp individual Regular home cleaning / Just once should map to First Cleaning');
 const kacsMessage = messages.approvedMessage({ lead: { customerName: 'Sample', bedrooms: 2, bathrooms: 1 }, quote: { company: 'kacs', service: 'first_cleaning', serviceLabel: 'First Cleaning', estimatedHours: { minimum: 2, maximum: 3.5 } } });
-check(kacsMessage.includes('Hi Sample,') && kacsMessage.includes('2-3.5 hours') && !kacsMessage.includes('$350'), 'KACS approval message should personalize the time estimate without a total');
+check(kacsMessage.includes('Hi Sample,') && kacsMessage.includes('2 – 3.5 hours') && !kacsMessage.includes('$350'), 'KACS approval message should personalize the time estimate without a total');
 const recurringMessage = messages.approvedMessage({ lead: { customerName: 'Sample' }, quote: { company: 'jheys', service: 'first_cleaning', serviceLabel: 'First Cleaning', amount: 250, recurringCleaning: { id: 'biweekly', label: 'Bi-weekly', priceRange: { minimum: 170, maximum: 200 } } } });
 check(recurringMessage.includes('AFTER THE FIRST CLEANING — BI-WEEKLY REGULAR CLEANING') && recurringMessage.includes('approximately $170 - $200 per visit'), 'Recurring cleaning messages should show the table-based rate plus $30');
 const noAutoDiscountMessage = messages.approvedMessage({ lead: { customerName: 'Sample' }, quote: { company: 'jheys', service: 'first_cleaning', serviceLabel: 'First Cleaning', amount: 250, recurringCleaning: { id: 'biweekly', label: 'Bi-weekly', priceRange: { minimum: 170, maximum: 200 } } } });
@@ -322,7 +322,9 @@ check(messages.archivingMessage('jheys', { customerName: 'Sample' }).includes("H
 
 // Stage 1 checks: includeEstimatedTime option, detailsRequestMessage signatures, homeDetails & playbook follow-ups
 const kacsForcedTimeQuote = engine.calculateQuote({ companyName: 'KACS Cleaning Services', bedrooms: 3, bathrooms: 2, serviceType: 'First Cleaning' }, { includeEstimatedTime: false });
-check(kacsForcedTimeQuote.includeEstimatedTime === true && messages.approvedMessage({ lead: { customerName: 'Sample' }, quote: kacsForcedTimeQuote }).includes('3.5-5 hours'), 'KACS must keep estimated time mandatory even if includeEstimatedTime is false');
+check(kacsForcedTimeQuote.includeEstimatedTime === true && messages.approvedMessage({ lead: { customerName: 'Sample' }, quote: kacsForcedTimeQuote }).includes('⏱️ Estimated time: Approximately 3.5 – 5 hours\n👥 Team: 2 professional cleaners\n\nThe actual time may vary depending on the home’s condition and the level of detail required.'), 'KACS must show the required time and team in the requested format even when includeEstimatedTime is false');
+const kacsExampleMessage = messages.approvedMessage({ lead: { customerName: 'Sample' }, quote: { ...kacsForcedTimeQuote, estimatedHours: { minimum: 6, maximum: 7.5 } } });
+check(kacsExampleMessage.includes('⏱️ Estimated time: Approximately 6 – 7.5 hours\n👥 Team: 2 professional cleaners') && !kacsExampleMessage.includes('Team: 1-2'), 'KACS must interpolate the example time and consistently state the two-cleaner team');
 
 for (const companyName of configuredCompanies.filter((name) => name !== 'KACS Cleaning Services')) {
   const lead = { companyName, customerName: 'Sample', bedrooms: 3, bathrooms: 2, serviceType: 'Deep Cleaning', extraServices: 'Oven cleaning' };

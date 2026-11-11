@@ -29,9 +29,11 @@
       'For this service, we recommend hourly pricing because the amount of time needed can vary depending on the home’s condition and the level of detail required.',
       '',
       '💲 Rate: $50 per cleaner, per hour',
-      '👥 Team: 1-2 cleaning professionals, depending on availability and the scope of work',
       '',
-      `Based on our experience with homes of similar size, this service typically takes approximately ${hours(quote.estimatedHours.minimum)}-${hours(quote.estimatedHours.maximum)} hours with a 2-cleaner team, depending on the home’s condition.`,
+      `⏱️ Estimated time: Approximately ${hours(quote.estimatedHours.minimum)} – ${hours(quote.estimatedHours.maximum)} hours`,
+      '👥 Team: 2 professional cleaners',
+      '',
+      'The actual time may vary depending on the home’s condition and the level of detail required.',
       '',
       'Upon arrival, our team will perform a brief walkthrough of the property and provide a more accurate estimate of the expected cleaning time before work begins.'
     ];
