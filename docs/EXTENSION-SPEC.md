@@ -48,6 +48,7 @@ Quando os valores do estado Apollo divergirem das respostas atuais visíveis no 
 ## Regras de serviço e faixa de tamanho
 
 - Uma nova lead marcada como `Regular home cleaning` sempre vira **First Cleaning**, mesmo se pedir atendimento semanal, quinzenal ou mensal. Tarifas recorrentes são apenas para clientes já atendidos após First/Deep Cleaning.
+- Quando o Yelp informa `Deep cleaning` e uma frequência recorrente, a cotação mantém a Deep Cleaning como serviço inicial e apresenta separadamente a estimativa para as limpezas regulares seguintes.
 - Quando o Yelp informa Move-in/Move-out combinado, o painel pergunta qual é o serviço. A escolha usa a coluna correspondente de Move-in ou Move-out; os valores não são calculados pela média.
 - A metragem usa a próxima faixa superior da tabela.
 - Sem metragem, quartos/banheiros definem uma faixa. Se não houver linha exata, usa-se a menor combinação cadastrada que cubra ambos; se nenhuma cobrir, exige-se revisão manual. A combinação 4 quartos / 4 banheiros usa 3.000 sq. ft.
@@ -85,6 +86,8 @@ Quando os valores do estado Apollo divergirem das respostas atuais visíveis no 
 
 - O campo opcional **Discount %** aceita de 0 a 100 e aplica o percentual ao tipo selecionado em **Cleaning type**; vazio não menciona desconto. Nas cotações de preço fixo, ambos os limites da faixa são descontados e arredondados para cima em incrementos de US$5.
 - Para um pedido recorrente de First Cleaning, o desconto informado vale para a primeira limpeza regular após a inicial; a mensagem informa o preço normal das visitas seguintes. Frequências quinzenal e mensal usam o preço da tabela mais uma faixa de US$30. Para semanal, o preço é confirmado após a primeira limpeza, sem inventar valor.
+- As respostas do Yelp `Once a month` e `Every 2 weeks` correspondem a mensal e quinzenal, respectivamente. A estimativa recorrente também aparece quando a limpeza inicial é Deep Cleaning; nesse caso, nas cotações de preço fixo, o desconto informado para Deep Cleaning incide sobre o serviço inicial, não sobre a recorrência.
+- Se a frequência reconhecida carregar depois da abertura do painel, os dados da mesma lead são atualizados e a cotação é recalculada antes de copiar ou confirmar a mensagem. Uma frequência identificada posteriormente também permite regenerar uma cotação salva com dados incompletos.
 - KACS usa cobrança por hora e não aplica desconto ao serviço inicial; o campo permanece disponível.
 - O painel e o formulário manual mostram abaixo do preço a estimativa de tempo usada na busca de disponibilidade. Nas empresas de preço fixo, essa duração usa a estimativa operacional derivada do valor cotado a US$100/hora, com intervalo de 1h (acompanhando a faixa de US$100); não é uma duração confirmada pela equipe.
 
@@ -174,6 +177,7 @@ No painel da lead no Yelp, o botão **Debug** abre e fecha o diagnóstico. **Cop
 - Dois perfis que carregam a mesma pasta e usam o mesmo ID compartilham os arquivos atualizados, mas seus dados em `chrome.storage.local` continuam separados por perfil. Se a pasta ou o ID forem diferentes, é necessário conferir a configuração do auxiliar para essa instalação.
 - O teste piloto de `0.1.34` para `0.1.35` foi concluído pelo usuário, que confirmou também a atualização no segundo perfil com mesma pasta e ID. Esse resultado valida esse cenário, sem substituir testes em configurações diferentes.
 - A versão `0.1.36` reúne as mudanças no popup e no debug do Yelp posteriores ao teste piloto.
+- A versão `1.0.7`, publicada no canal assinado, inclui as correções de frequência e de recorrência após Deep Cleaning. Os testes automatizados cobrem as duas frequências nas sete empresas; a publicação do pacote e do canal foi verificada.
 - A partir da `0.1.37`, a extensão se chama **Presto VA Assistant** e o auxiliar **Presto VA Assistant auto updater**. Instale primeiro a nova versão do auxiliar; o auxiliar antigo não reconhece o novo nome da extensão.
 
 Arquivos principais:

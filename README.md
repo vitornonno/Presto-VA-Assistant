@@ -17,7 +17,7 @@ Para uma instalação nova:
 2. Extraia o ZIP do atualizador e execute `Instalar-Atualizador.cmd`. Na janela, selecione a mesma pasta da extensão e informe o ID mostrado em `chrome://extensions`.
 3. Reinicie o Chrome. No popup da extensão, use **Verificar atualizações**; após uma atualização, recarregue a página do Yelp.
 
-**Quem já usa a extensão:** instale primeiro o auxiliar v0.1.38 antes de atualizar a extensão. Os auxiliares anteriores não reconhecem o novo nome ou o arquivo da logo. A v1.0.6 está disponível também pelo botão **Verificar atualizações** para quem já instalou o auxiliar compatível.
+**Quem já usa a extensão:** instale primeiro o auxiliar v0.1.38 antes de atualizar a extensão. Os auxiliares anteriores não reconhecem o novo nome ou o arquivo da logo. A v1.0.7 está disponível também pelo botão **Verificar atualizações** para quem já instalou o auxiliar compatível.
 
 Perfis do Chrome que carregam a mesma pasta e usam o mesmo ID compartilham os arquivos da extensão, mas mantêm seus dados locais separados. O auxiliar é configurado para a conta do Windows, o ID e a pasta selecionados. Veja as [instruções do atualizador](updater/NativeHost/README.md).
 
