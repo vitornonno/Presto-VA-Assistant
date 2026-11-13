@@ -951,11 +951,11 @@ assertCheck(
 );
 
 // 5.3 VA Name Selector Override & Quo Extractor Integrity
-const expectedVas = ['Frank', 'Mary', 'Andie', 'Luiza', 'Carol', 'Oliver'];
+const expectedVas = ['Frank', 'Mary', 'Andie', 'Luiza', 'Carol', 'Oliver', 'Jonas'];
 assertCheck(
   Array.isArray(messages.VA_NAMES) && expectedVas.every((va) => messages.VA_NAMES.includes(va)) && messages.VA_NAMES.length === expectedVas.length,
   'Tier 5',
-  'VA_NAMES must contain Frank, Mary, Andie, Luiza, Carol, and Oliver'
+  'VA_NAMES must contain Frank, Mary, Andie, Luiza, Carol, Oliver, and Jonas'
 );
 
 for (const vaName of expectedVas) {

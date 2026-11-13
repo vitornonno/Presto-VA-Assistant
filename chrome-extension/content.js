@@ -578,7 +578,7 @@
     root.innerHTML = `
         <header><span>Presto VA Assistant <small>v${BUILD_VERSION}</small></span><div><button type="button" data-action="debug" aria-expanded="${debugVisible}">Debug</button><button data-action="close" aria-label="Close">×</button></div></header>
       <section class="lead-fields">
-        <label>VA (Atendente)<select data-field="vaName"><option value="">Company default (Padrão)</option>${(CleaningQuoteMessages.VA_NAMES || ['Frank', 'Mary', 'Andie', 'Luiza', 'Carol', 'Oliver']).map((name) => `<option value="${escapeHtml(name)}" ${selectedVaName === name ? 'selected' : ''}>${escapeHtml(name)}</option>`).join('')}</select></label>
+        <label>VA (Atendente)<select data-field="vaName"><option value="">Company default (Padrão)</option>${(CleaningQuoteMessages.VA_NAMES || ['Frank', 'Mary', 'Andie', 'Luiza', 'Carol', 'Oliver', 'Jonas']).map((name) => `<option value="${escapeHtml(name)}" ${selectedVaName === name ? 'selected' : ''}>${escapeHtml(name)}</option>`).join('')}</select></label>
         ${input('Company name', lead.companyName, 'companyName')}
         ${input('Customer name', lead.customerName, 'customerName')}
         <label>Company pricing<select data-field="companyOverride"><option value="">Auto-detect</option>${Object.entries(CleaningQuoteEngine.COMPANIES).map(([key, company]) => `<option value="${key}" ${companyOverride === key ? 'selected' : ''}>${escapeHtml(company.name)}</option>`).join('')}</select></label>

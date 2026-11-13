@@ -141,7 +141,7 @@
     };
     return signatures[company] || signatures.kacs;
   }
-  const VA_NAMES = ['Frank', 'Mary', 'Andie', 'Luiza', 'Carol', 'Oliver'];
+  const VA_NAMES = ['Frank', 'Mary', 'Andie', 'Luiza', 'Carol', 'Oliver', 'Jonas'];
   function resolveAttendant(company, ...sources) {
     for (const source of sources) {
       const candidate = typeof source === 'string' ? source.trim() : String(source?.vaName || '').trim();
