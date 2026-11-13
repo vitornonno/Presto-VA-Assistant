@@ -1,6 +1,12 @@
 # Presto VA Assistant auto updater
 
-Este componente é um host de Native Messaging para Windows. Ele usa a chave pública `TrustedUpdateKey.pem` incorporada no executável para conferir o canal de atualizações. Uma compilação `Release` falha se a chave pública estiver ausente. O host não recebe a chave privada.
+Este componente é um host de Native Messaging para Windows e macOS. Ele usa a chave pública `TrustedUpdateKey.pem` incorporada no executável para conferir o canal de atualizações. Uma compilação `Release` falha se a chave pública estiver ausente. O host não recebe a chave privada.
+
+## macOS (em validação)
+
+A mesma extensão descompactada funciona no Chrome para Mac. O auxiliar possui compilações para Apple Silicon e Intel, e o instalador escolhe a arquitetura do computador. Após extrair o pacote completo, abra o Terminal na pasta extraída e execute `bash Instalar-Atualizador-Mac.command`. Selecione a pasta efetivamente carregada no Chrome, informe e confirme o ID em `chrome://extensions`, reinicie o Chrome e use **Verificar atualizações**. O auxiliar registra o manifesto apenas para o usuário atual, em `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/`. O sistema pode solicitar autorização para abrir um programa baixado; a distribuição ainda não foi assinada e reconhecida pela Apple. Um teste completo em Mac real é necessário antes de distribuir aos VAs.
+
+Para preparar os executáveis: `dotnet publish updater/NativeHost/NativeHost.csproj -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true` e o mesmo comando com `osx-x64`. Inclua os executáveis nas pastas `mac-arm64` e `mac-x64` ao lado do instalador. O canal assinado e o ZIP da extensão são compartilhados com o Windows.
 
 Para gerar o executável de distribuição, primeiro configure a chave pública de produção e execute:
 

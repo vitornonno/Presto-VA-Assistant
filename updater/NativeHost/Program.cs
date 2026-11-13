@@ -163,7 +163,8 @@ internal static class Program
     {
         try
         {
-            if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Setup requires Windows.");
+            if (OperatingSystem.IsMacOS()) return SetupMac();
+            if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Setup requires Windows or macOS.");
             _ = ReadEmbeddedPublicKey();
             Console.WriteLine("Presto VA Assistant auto updater");
             Console.WriteLine("Selecione na janela a pasta exibida em chrome://extensions → detalhes → Carregado de.");
@@ -205,6 +206,55 @@ internal static class Program
             return 0;
         }
         catch (Exception error) { Console.Error.WriteLine(SafeError(error)); return 1; }
+    }
+
+    private static int SetupMac()
+    {
+        _ = ReadEmbeddedPublicKey();
+        Console.WriteLine("Presto VA Assistant auto updater — macOS");
+        Console.WriteLine("Selecione a pasta exibida em chrome://extensions → detalhes → Carregado de.");
+        using var picker = Process.Start(new ProcessStartInfo("/usr/bin/osascript")
+        {
+            ArgumentList = { "-e", "POSIX path of (choose folder with prompt \"Selecione a pasta da extensão Presto VA Assistant\")" },
+            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false
+        }) ?? throw new InvalidOperationException("Não foi possível abrir o seletor de pastas.");
+        var path = picker.StandardOutput.ReadToEnd().Trim();
+        picker.WaitForExit();
+        if (picker.ExitCode != 0 || string.IsNullOrWhiteSpace(path)) throw new InvalidOperationException("Seleção cancelada; nenhuma configuração foi alterada.");
+        Console.Write("ID da extensão (32 letras exibidas em chrome://extensions): ");
+        var id = Console.ReadLine()?.Trim() ?? "";
+        var config = new HostConfiguration(id, path);
+        ValidateConfiguration(config);
+        Console.WriteLine($"Pasta: {Path.GetFullPath(path)}\nID: {id}\nVersão instalada: {ReadExtensionVersion(path)}");
+        Console.Write("Confirme que a pasta e o ID são da mesma extensão em chrome://extensions (S/N): ");
+        if (!string.Equals(Console.ReadLine()?.Trim(), "s", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Instalação cancelada; nenhuma configuração foi alterada.");
+        if (File.Exists(ConfigPath))
+        {
+            var existing = ReadConfiguration();
+            if (!string.Equals(existing.ExtensionId, id, StringComparison.Ordinal) || !string.Equals(Path.GetFullPath(existing.ExtensionPath), Path.GetFullPath(path), StringComparison.Ordinal))
+                throw new InvalidOperationException("O auxiliar já está configurado para outra instalação. Não foi substituído.");
+        }
+        var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Updater executable is unavailable.");
+        if (Path.GetFileName(executable) != "CleaningUpdaterHost") throw new InvalidOperationException("Execute o auxiliar publicado, não dotnet run.");
+        var installedExe = Path.Combine(InstallDir, "CleaningUpdaterHost");
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var nativeDir = Path.Combine(home, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts");
+        var nativeManifest = Path.Combine(nativeDir, HostName + ".json");
+        if (File.Exists(nativeManifest))
+        {
+            using var registered = JsonDocument.Parse(File.ReadAllBytes(nativeManifest));
+            if (!registered.RootElement.TryGetProperty("path", out var registeredPath) || registeredPath.GetString() != installedExe)
+                throw new InvalidOperationException("O nome do auxiliar já está registrado em outro local. A configuração existente não foi alterada.");
+        }
+        Directory.CreateDirectory(InstallDir);
+        Directory.CreateDirectory(nativeDir);
+        if (!string.Equals(Path.GetFullPath(executable), Path.GetFullPath(installedExe), StringComparison.Ordinal)) File.Copy(executable, installedExe, overwrite: true);
+        File.SetUnixFileMode(installedExe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(config, JsonOptions));
+        File.WriteAllText(nativeManifest, JsonSerializer.Serialize(new { name = HostName, description = "Presto VA Assistant auto updater", path = installedExe, type = "stdio", allowed_origins = new[] { $"chrome-extension://{id}/" } }));
+        Console.WriteLine("Auxiliar configurado. Reinicie o Chrome e use Verificar atualizações na extensão.");
+        return 0;
     }
 
     private static string? SelectExtensionFolder()
