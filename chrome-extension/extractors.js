@@ -381,6 +381,18 @@
     return isCustomerName(cleaned) ? firstName(cleaned) : null;
   }
 
+  function quoConversationSection() {
+    return document.querySelector?.('section[aria-label^="Conversation with "]')
+      || document.querySelector?.('main section')
+      || null;
+  }
+
+  function quoConversationText() {
+    const conversationSection = quoConversationSection();
+    const conversationFeed = conversationSection?.querySelector?.('[data-testid="feed"]') || conversationSection;
+    return conversationFeed?.innerText || '';
+  }
+
   function extractQuoLead() {
     const inboxId = String(location.pathname || '').match(/\/inbox\/(PN[A-Za-z0-9]+)/)?.[1] || null;
     const titleText = String(document.title || '').replace(/\s*\|\s*Quo\s*$/i, '').trim();
@@ -389,6 +401,7 @@
       || yelpBusinessNameFromText(titleText)
       || yelpBusinessNameFromText(sideMenuText)
       || null;
+    const conversationSection = quoConversationSection();
     let customerName = null;
     const activeLink = document.querySelector?.(`a[href="${location.pathname}"]`)
       || document.querySelector?.('a[aria-current="page"][href*="/inbox/"]');
@@ -399,16 +412,16 @@
       customerName = cleanQuoContactName(primary);
     }
     if (!customerName) {
-      const sectionLabel = document.querySelector?.('section[aria-label^="Conversation with "]')?.getAttribute?.('aria-label') || '';
+      const sectionLabel = conversationSection?.getAttribute?.('aria-label') || '';
       const fromSection = sectionLabel.replace(/^Conversation with\s+/i, '').trim();
       customerName = cleanQuoContactName(fromSection);
     }
     if (!customerName) {
-      const headerName = document.querySelector?.('.amkpg00')?.innerText?.trim();
+      const headerName = (conversationSection || document).querySelector?.('.amkpg00')?.innerText?.trim();
       customerName = cleanQuoContactName(headerName);
     }
     if (!customerName) {
-      const avatars = Array.from(document.querySelectorAll?.('[role="img"][aria-label$="\'s avatar"]') || [])
+      const avatars = Array.from((conversationSection || document).querySelectorAll?.('[role="img"][aria-label$="\'s avatar"]') || [])
         .map((el) => String(el.getAttribute('aria-label') || '').replace(/'s avatar$/i, '').trim())
         .filter((name) => name && !/^(?:presto\s+llc|juliana\s+paix[aã]o)$/i.test(name))
         .map(cleanQuoContactName)
@@ -416,8 +429,8 @@
       const uniqueAvatars = [...new Set(avatars)];
       if (uniqueAvatars.length === 1) customerName = uniqueAvatars[0];
     }
-    const bodyText = text();
-    const phoneMatch = document.querySelector?.('button._3d2pn1')?.innerText?.match(/(\(\d{3}\)\s*\d{3}[-.\s]\d{4}|\+?1?[-.\s]*\d{3}[-.\s]\d{3}[-.\s]\d{4})/)?.[1] || null;
+    const bodyText = quoConversationText();
+    const phoneMatch = (conversationSection || document).querySelector?.('button._3d2pn1')?.innerText?.match(/(\(\d{3}\)\s*\d{3}[-.\s]\d{4}|\+?1?[-.\s]*\d{3}[-.\s]\d{3}[-.\s]\d{4})/)?.[1] || null;
     return {
       id: `quo:${location.pathname}`,
       platform: 'quo',
@@ -471,6 +484,6 @@
     };
   }
 
-  global.CleaningLeadExtractor = { extractLead, extractQuoLead, yelpApolloStateFromScripts, extractYelpLeadFromState, firstName, isCustomerName, visibleCustomerName, yelpBusinessNameFromText, surveyAnswer, answersAfterLabel, leadDetailsSection, leadPhoneFromDetails, squareFeetFromText };
+  global.CleaningLeadExtractor = { extractLead, extractQuoLead, quoConversationText, yelpApolloStateFromScripts, extractYelpLeadFromState, firstName, isCustomerName, visibleCustomerName, yelpBusinessNameFromText, surveyAnswer, answersAfterLabel, leadDetailsSection, leadPhoneFromDetails, squareFeetFromText };
   if (typeof module !== 'undefined') module.exports = global.CleaningLeadExtractor;
 })(globalThis);

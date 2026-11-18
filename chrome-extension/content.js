@@ -2,7 +2,7 @@
 (function contentModule() {
   'use strict';
 
-  const BUILD_VERSION = chrome.runtime?.getManifest?.()?.version || '1.0.6';
+  const BUILD_VERSION = chrome.runtime?.getManifest?.()?.version || '1.0.9';
   const VA_STORAGE_KEY = 'selectedVaName';
   const LAST_COMPANY_KEY = 'lastQuickReplyCompany';
   let selectedVaName = '';
@@ -261,7 +261,7 @@
       if (manualPanelOpen) {
         panelEdited = false;
         refreshLeadPanel(true);
-        [200, 600].forEach((delay) => setTimeout(() => {
+        [200, 600, 1200, 2000].forEach((delay) => setTimeout(() => {
           if (currentRoute() === routeAtNavigation && manualPanelOpen && !panelEdited) refreshLeadPanel(true);
         }, delay));
       } else {
@@ -516,8 +516,16 @@
     return `<label>Cleaning type<select data-field="serviceType"><option value="">Select cleaning type</option>${options}</select>${moveTypeNote}</label>`;
   }
   function conversationText() {
-    const conversation = document.querySelector('main') || document.body;
-    return conversation?.innerText || '';
+    if (/(^|\.)(quo|openphone)\.com$/i.test(location.hostname)) {
+      return CleaningLeadExtractor.quoConversationText?.() || '';
+    }
+    const main = document.querySelector('main');
+    if (main) return main.innerText || '';
+    const body = document.body;
+    if (!body) return '';
+    const raw = body.innerText || '';
+    const assistantText = root?.innerText || '';
+    return assistantText ? raw.replace(assistantText, '') : raw;
   }
   function followUpButtons() {
     if (!canCopyCompanyScripts()) return '<button disabled>Copy follow-up</button>';

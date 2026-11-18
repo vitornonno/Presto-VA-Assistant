@@ -527,6 +527,37 @@ for (const replyId of customerQuickReplyIds) {
   check(kacsQuote.baseHours === 6.5, 'KACS 4b/3b deep cleaning must use KACS_HOURS table value of 6.5h');
   check(kacsQuote.estimatedHours.minimum === 6.5 && kacsQuote.estimatedHours.maximum === 8, 'KACS 4b/3b must produce 6.5h to 8.0h');
   check(!Object.hasOwn(kacsQuote, 'amount'), 'KACS quote must not calculate fixed dollar amount');
+
+  // 7. Quo conversation isolation: inbox sidebar previews inside <main> must not mark follow-ups as sent or leak lead details
+  const prevDoc = global.document;
+  const prevLoc = global.location;
+  const quoFeedNode = { innerText: 'Good evening! I apologize for this, but my husband has gotten pretty sick and asked if we can cancel tomorrow’s cleaning' };
+  const quoSectionNode = {
+    innerText: `Rebecca T.\n(925) 330-4563\n${quoFeedNode.innerText}`,
+    getAttribute: (attr) => attr === 'aria-label' ? 'Conversation with Rebecca T.' : null,
+    querySelector: (selector) => selector === '[data-testid="feed"]' ? quoFeedNode : selector === 'button._3d2pn1' ? { innerText: '(925) 330-4563' } : null,
+    querySelectorAll: () => []
+  };
+  const quoMainNode = {
+    innerText: `Thumbtack - Jason Duran\nYou: Hi Jason, this is Frank just checking in!\nI tried giving you a quick call to follow up in case you're still looking for help with your home cleaning.\n4 bedrooms 3 bathrooms 2400 sq ft Deep cleaning\n${quoSectionNode.innerText}`
+  };
+  global.location = { hostname: 'app.quo.com', pathname: '/inbox/PNA47i0whf/c/CNrebecca', search: '', href: 'https://app.quo.com/inbox/PNA47i0whf/c/CNrebecca' };
+  global.document = {
+    title: '(5) KACS Cleaning | Quo',
+    querySelector: (selector) => {
+      if (selector === 'section[aria-label^="Conversation with "]') return quoSectionNode;
+      if (selector === 'main') return quoMainNode;
+      return null;
+    },
+    querySelectorAll: () => []
+  };
+  const extractedQuo = extractor.extractLead();
+  const quoChatText = extractor.quoConversationText();
+  const quoFollowUps = messages.followUpStatus('kacs', extractedQuo, quoChatText);
+  check(extractedQuo.platform === 'quo' && extractedQuo.customerName === 'Rebecca' && extractedQuo.bedrooms === null && extractedQuo.squareFeet === null, 'Quo lead extraction must read only the active conversation section, ignoring inbox sidebar previews inside <main>');
+  check(quoFollowUps.every((item) => !item.sent), 'Quo follow-up status must not mark follow-ups as sent when they only appear in another conversation preview in the inbox sidebar');
+  global.document = prevDoc;
+  global.location = prevLoc;
 }
 
 console.log('Pricing logic checks passed.');
