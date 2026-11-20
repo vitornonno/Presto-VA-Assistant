@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Privacy policy for Presto VA Assistant, including local data, route services, retention, and contact information.">
+  <title>Presto VA Assistant — Privacy Policy / Política de Privacidade</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172536; background: #f7f9fb; }
+    body { margin: 0; }
+    main { max-width: 76ch; margin: auto; padding: 2.5rem 1.25rem 4rem; }
+    header { border-bottom: 1px solid #ccd7df; padding-bottom: 1.5rem; }
+    h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 .8rem; }
+    h2 { font-size: 1.55rem; line-height: 1.3; }
+    h3 { font-size: 1.2rem; margin-top: 1.8rem; }
+    p { line-height: 1.75; overflow-wrap: anywhere; }
+    a { color: #075ca8; text-underline-offset: .18em; }
+    a:focus-visible { outline: 3px solid #075ca8; outline-offset: 4px; }
+    nav { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+    section { padding-top: 1.5rem; scroll-margin-top: 1rem; }
+    section + section { border-top: 1px solid #ccd7df; margin-top: 3rem; }
+    code { font-size: .9em; padding: .1em .25em; background: #e9eff4; border-radius: .2em; overflow-wrap: anywhere; }
+    @media print { body { background: white; } main { max-width: none; padding: 0; } nav { display: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Presto VA Assistant</h1>
+    <nav aria-label="Policy language / Idioma da política"><a href="#english" lang="en">English</a><a href="#portugues" lang="pt-BR">Português brasileiro</a></nav>
+  </header>
+  <section id="english" lang="en" aria-label="Privacy policy in English">
+<h2>Presto VA Assistant — Privacy Policy</h2>
+<p>This policy applies to the Chrome Web Store edition 1.2.0 of Presto VA Assistant.</p>
+<p>Effective date: 2026-11-19<br>Operator: Presto VA Assistant<br>Privacy and support contact: <a href="mailto:vitornonno@outlook.com">vitornonno@outlook.com</a></p>
+<h3>What the extension does</h3>
+<p>Presto VA Assistant helps authorized cleaning-business attendants prepare preliminary quotes, message drafts, and schedule suggestions for human review. It does not automatically send customer messages or create/change appointments.</p>
+<h3>Information processed</h3>
+<p>On supported Yelp, Quo/OpenPhone, and Thumbtack pages, the assistant processes relevant lead/customer details and active conversation content. The Yelp panel can appear automatically as a lead page loads; the assistant also reacts to page navigation and dynamically loaded content. Relevant information can include names, phone numbers, addresses or ZIP codes, property size, service preferences, requested extras, message text, company/account identifiers, and the active lead/conversation URL. It uses the conversation to personalize replies and identify follow-ups already present.</p>
+<p>When an attendant starts a Presto scan, the assistant reads calendar jobs and their opened details, including customer names, addresses, coordinates, dates/times, service types, assigned cleaners, and service prices. It also processes details entered in the manual quote form and cleaner names/dates/time windows imported from selected XLSX files. Saved quotes may contain identifiable service prices; the extension does not process card payments or request card/bank credentials.</p>
+<p>The extension stores operational records, drafts, selected attendant/company, preferences, calendar snapshots, imported availability, and the configured route-relay URL/token in <code>chrome.storage.local</code> for the current Chrome profile. It reads conversation content locally; it does not intentionally upload full conversations to the route service. It does not use Chrome Sync as an application data store.</p>
+<h3>Network requests and recipients</h3>
+<p>When you request availability, geocoding, or a route test, the configured HTTPS relay receives a location/address query and region restriction or origin/destination coordinates, together with its authentication token. The default relay is hosted on <strong>Cloudflare Workers</strong>, at <code>cleaning-route-relay.jvnonno54.workers.dev</code>. Its code uses <strong>Mapbox</strong> for geocoding and driving-route estimates. Mapbox receives the location query or coordinates and the server&#39;s Mapbox credential; the relay token is not forwarded as that credential. Requests also expose normal connection metadata such as an IP address to the service receiving the request. Route calculations do not require the customer&#39;s name, telephone number, or full conversation to be included in the request.</p>
+<p>If a custom relay is supported and you choose one, that endpoint&#39;s operator receives the same kinds of request data. Use an endpoint approved by your team; its operator and retention practices may differ from the default service.</p>
+<p>The service websites you use continue to process information under their own practices. Chrome handles installation and extension updates for the Web Store edition. This edition does not require the legacy Native Messaging updater and does not use it to send lead data or install extension code.</p>
+<p>The extension contains no application analytics or advertising SDK and does not sell data, use it for personalized advertisements, or use it to assess creditworthiness. The extension does not provide an automatic developer upload of quote records or conversations. Data can leave the device through the disclosed route requests, a user-created backup, a message copied and sent by the attendant, or information the user explicitly shares for support.</p>
+<h3>Retention and choices</h3>
+<p>Local operational records remain until removed, replaced, or the extension&#39;s data is cleared. You can remove saved quotes, clear an imported scale, clear the manual draft, or uninstall the extension. Clearing ordinary browser history is not the same as clearing extension storage. Exported JSON files and text copied to the system clipboard are separate copies and must be deleted/managed by you; uninstalling the extension does not delete your downloaded backups or records held by the service websites.</p>
+<p>Backup exports include operational customer/calendar data. The relay token is excluded by default and included only if you explicitly select that option. Current backup/import excludes saved Quo records (<code>lead:quo:*</code>) and some transient UI/calculation state. Keep backups private. Diagnostic copy actions try to redact sensitive fields, but you should inspect the content before sharing it.</p>
+<p>The supplied relay code does not explicitly write requests or results to a database. Infrastructure providers may process and retain request metadata and service/security logs according to their settings and applicable policies; absence of a database in the relay code is not a promise of zero server logging. See <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare&#39;s privacy policy</a> and <a href="https://www.mapbox.com/legal/privacy">Mapbox&#39;s privacy policy</a>. Retention can depend on the provider and service configuration; contact us for questions about the default relay&#39;s operation.</p>
+<p>Contact the operator above for privacy questions or requests concerning information the operator actually holds. We cannot directly erase records retained by independently operated service websites, backups under your control, or a custom relay operator.</p>
+<h3>Limited use and changes</h3>
+<p>Presto VA Assistant&#39;s use of user data complies with the Chrome Web Store User Data Policy, including its Limited Use requirements. Data is used only for the disclosed quote/reply/scheduling assistance and necessary operation of those features. Material changes to these practices will be reflected in this policy and disclosed in the extension when required.</p>
+  </section>
+  <section id="portugues" lang="pt-BR" aria-label="Política de privacidade em português">
+<h2>Presto VA Assistant — Política de Privacidade</h2>
+<p>Esta política se aplica à edição Chrome Web Store 1.2.0 do Presto VA Assistant.</p>
+<p>Vigência: 19/11/2026<br>Nome de operação: Presto VA Assistant<br>Contato de privacidade e suporte: <a href="mailto:vitornonno@outlook.com">vitornonno@outlook.com</a></p>
+<h3>Finalidade</h3>
+<p>O Presto VA Assistant ajuda atendentes autorizados de empresas de limpeza a preparar cotações preliminares, respostas e sugestões de horários para revisão humana. Não envia mensagens a clientes nem cria/altera agendamentos automaticamente.</p>
+<h3>Informações tratadas</h3>
+<p>Nas páginas compatíveis de Yelp, Quo/OpenPhone e Thumbtack, o assistente processa dados relevantes da lead/cliente e da conversa ativa. O painel Yelp pode aparecer automaticamente durante o carregamento de uma lead; a extensão também acompanha a navegação e o carregamento dinâmico da página. Os dados podem incluir nomes, telefones, endereços ou CEPs, tamanho do imóvel, preferências de serviço, extras, mensagens, identificadores de empresa/conta e a URL da lead/conversa ativa. A conversa é usada para personalizar respostas e identificar follow-ups já presentes.</p>
+<p>Quando o atendente inicia a leitura do Presto, o assistente lê os jobs e seus cards, incluindo nomes de clientes, endereços, coordenadas, datas/horários, serviços, cleaners atribuídos e preços. Também processa os dados inseridos no formulário manual e os nomes/datas/janelas de cleaners importados de arquivos XLSX escolhidos pelo usuário. Cotações salvas podem conter preços vinculados a clientes identificados; a extensão não processa pagamentos com cartão nem pede credenciais bancárias/cartões.</p>
+<p>Registros operacionais, rascunhos, atendente/empresa selecionados, preferências, snapshots da agenda, disponibilidade importada e URL/token do relay são armazenados em <code>chrome.storage.local</code>, no perfil atual do Chrome. O conteúdo da conversa é lido localmente; não há upload intencional das conversas completas para o serviço de rotas. O Chrome Sync não é usado como armazenamento de dados da aplicação.</p>
+<h3>Requisições de rede e destinatários</h3>
+<p>Ao solicitar disponibilidade, geocodificação ou teste de rota, o relay HTTPS configurado recebe a consulta de endereço/localidade e a região de busca, ou as coordenadas de origem/destino, além do token de autenticação. O relay padrão é hospedado no <strong>Cloudflare Workers</strong>, em <code>cleaning-route-relay.jvnonno54.workers.dev</code>. Seu código consulta o <strong>Mapbox</strong> para geocodificação e estimativas de deslocamento. O Mapbox recebe a consulta ou coordenadas e a credencial Mapbox do servidor; o token do relay não é repassado como essa credencial. Cada destinatário da requisição também recebe os metadados normais de conexão, como o IP de origem. O cálculo de rota não exige enviar nome, telefone ou conversa completa do cliente na requisição.</p>
+<p>Se a função de relay personalizado estiver disponível e você escolher um, o operador desse endpoint recebe os mesmos tipos de dados. Use um endpoint aprovado pela equipe; responsável e retenção podem diferir do serviço padrão.</p>
+<p>Os próprios sites acessados continuam tratando informações segundo suas práticas. A instalação e atualização da edição da loja são feitas pelo Chrome. Essa edição não depende do antigo auxiliar Native Messaging nem o usa para enviar dados de leads ou instalar código da extensão.</p>
+<p>A extensão não contém SDK de publicidade ou analytics da aplicação, não vende dados nem os usa para publicidade personalizada ou análise de crédito. Não há upload automático de registros de cotações ou conversas para o desenvolvedor. Dados podem sair do dispositivo nas requisições de rota descritas, em um backup criado pelo usuário, em mensagens copiadas e enviadas pelo atendente ou em informações que ele decida compartilhar para suporte.</p>
+<h3>Retenção e controles</h3>
+<p>Os dados locais permanecem até serem removidos, substituídos ou apagados com os dados da extensão. É possível remover cotações, limpar escala importada, limpar rascunho ou desinstalar a extensão. Apagar o histórico comum do navegador não equivale a apagar os dados da extensão. JSONs exportados e conteúdo copiado para a área de transferência são cópias separadas, gerenciadas pelo usuário; desinstalar não apaga backups baixados nem registros mantidos pelos sites.</p>
+<p>Backups contêm dados operacionais de clientes e agenda. O token é excluído por padrão e só entra quando sua inclusão é marcada explicitamente. O backup/importação atual exclui registros Quo (<code>lead:quo:*</code>) e parte do estado temporário da interface/cálculo. Mantenha os arquivos privados. Os diagnósticos copiados tentam mascarar dados sensíveis, mas devem ser conferidos antes de compartilhar.</p>
+<p>O código fornecido do relay não grava explicitamente requisições ou respostas em banco de dados. Os provedores de infraestrutura podem processar/reter metadados das requisições e logs de serviço/segurança conforme suas configurações e políticas; a ausência de banco no código não é uma promessa de nenhum log no servidor. Consulte a <a href="https://www.cloudflare.com/privacypolicy/">política do Cloudflare</a> e a <a href="https://www.mapbox.com/legal/privacy">política do Mapbox</a>. A retenção pode depender do provedor e da configuração do serviço; contate-nos para dúvidas sobre a operação do relay padrão.</p>
+<p>Contate o responsável acima para dúvidas ou solicitações sobre dados que ele efetivamente mantém. Não podemos apagar diretamente registros de sites independentes, backups sob seu controle ou dados mantidos por operadores de relays personalizados.</p>
+<h3>Uso limitado e alterações</h3>
+<p>O uso de dados pelo Presto VA Assistant segue a Chrome Web Store User Data Policy, incluindo os requisitos de Limited Use. Os dados são usados apenas para a assistência de cotação/respostas/agenda descrita e a operação necessária desses recursos. Alterações relevantes serão refletidas nesta política e informadas na extensão quando exigido.</p>
+  </section>
+</main>
+</body>
+</html>
